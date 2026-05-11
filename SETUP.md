@@ -1,4 +1,4 @@
-Install Frontend Dependencies: 
+# Install Frontend Dependencies: 
 - cd frontend
 
 - npm install axios
@@ -16,7 +16,9 @@ Install Frontend Dependencies:
 
 # backend
 - npm init -y
-- install Backend Dependencies
+
+install Backend Dependencies
+
 - npm install express cors dotenv pg bcryptjs jsonwebtoken multer
 - npm install typescript ts-node-dev @types/node --save-dev
 
