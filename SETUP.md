@@ -36,16 +36,16 @@ npm i --save-dev @types/pg
 Install and open pgAdmin
 
 Steps:
-Right-click Servers
-Click Register → Server
-Set name (e.g. Local PostgreSQL)
-Go to Connection tab
+- Right-click Servers
+- Click Register → Server
+- Set name (e.g. Local PostgreSQL)
+- Go to Connection tab
 Set:
-Host: localhost
-Port: 5432
-Username: postgres
-Password: (your password)
-Click Save
+- Host: localhost
+- Port: 5432
+- Username: postgres
+- Password: (your password)
+- Click Save
 
 # Create database
 under your created Server, right-click databases
