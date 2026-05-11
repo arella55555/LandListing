@@ -14,7 +14,7 @@ Install Frontend Dependencies:
 - npm install react-native-paper
 - npm install @react-native-async-storage/async-storage
 
-- cd backend
+# backend
 - npm init -y
 - install Backend Dependencies
 - npm install express cors dotenv pg bcryptjs jsonwebtoken multer
