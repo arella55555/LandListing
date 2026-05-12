@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
@@ -108,3 +109,15 @@ app.post("/login", async (req: Request, res: Response) => {
 app.listen(PORT, () => console.log(`Server on http://localhost: ${PORT}`));
 
 
+=======
+import dotenv from "dotenv";
+dotenv.config();
+
+import app from "./src/app";
+
+const PORT = 5000;
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+>>>>>>> d3978336dcfff4cfb7f76d098a5fdbcedec05531
