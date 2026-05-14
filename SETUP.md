@@ -1,4 +1,4 @@
-Install Frontend Dependencies: 
+# Install Frontend Dependencies: 
 - cd frontend
 
 - npm install axios
@@ -14,15 +14,15 @@ Install Frontend Dependencies:
 - npm install react-native-paper
 - npm install @react-native-async-storage/async-storage
 
-- cd backend
+# backend
 - npm init -y
 - install Backend Dependencies
 - npm install express cors dotenv pg bcryptjs jsonwebtoken multer
-= npm install typescript ts-node-dev @types/node --save-dev
+- npm install typescript ts-node-dev @types/node --save-dev
 
-= npm install @types/express @types/cors @types/bcryptjs @types/jsonwebtoken @types/multer --save-dev
+- npm install @types/express @types/cors @types/bcryptjs @types/jsonwebtoken @types/multer --save-dev
 
-npx tsc --init
+- npx tsc --init
 
 - Inside backend/package.json:
 "scripts": {
@@ -55,13 +55,13 @@ Set Database to landlisting_db
 # make .env on backend/
 paste below and change accordingly
 
-DB_USER=postgres
-DB_HOST=localhost
-DB_NAME=landlisting_db
-DB_PASSWORD=your_password_here
-DB_PORT=5432
+- DB_USER=postgres
+- DB_HOST=localhost
+- DB_NAME=landlisting_db
+- DB_PASSWORD=your_password_here
+- DB_PORT=5432
 
-JWT_SECRET=your_secret_here (ignore this for now)
+- JWT_SECRET=your_secret_here (ignore this for now)
 
 
 # Do ipconfig
