@@ -14,11 +14,11 @@
 - npm install react-native-paper
 - npm install @react-native-async-storage/async-storage
 
-# backend
-- npm init -y
-- install Backend Dependencies
-- npm install express cors dotenv pg bcryptjs jsonwebtoken multer
-- npm install typescript ts-node-dev @types/node --save-dev
+cd backend
+npm init -y
+install Backend Dependencies
+npm install express cors dotenv pg bcryptjs jsonwebtoken multer
+npm install typescript ts-node-dev @types/node --save-dev
 
 - npm install @types/express @types/cors @types/bcryptjs @types/jsonwebtoken @types/multer --save-dev
 
@@ -48,9 +48,9 @@ Set:
 - Click Save
 
 # Create database
-under your created Server, right-click databases
-Click Create → Database
-Set Database to landlisting_db
+- under your created Server, right-click databases
+- Click Create → Database
+- Set Database to landlisting_db
 
 # make .env on backend/
 paste below and change accordingly
