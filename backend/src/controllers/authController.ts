@@ -1,12 +1,8 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Pool } from 'pg';
+import pool from '../config/db';
 import { UserRole } from '../types/express';
-
-const pool = new Pool ({
-    connectionString: process.env.DATABASE_URL,
-});
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const VALID_ROLES: UserRole[] = ['buyer', 'seller', 'admin'];
