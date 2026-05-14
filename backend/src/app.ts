@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("LibQuest API running");
+  res.send("Lupa.ph API running");
 });
 
 export default app;
