@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
 import roleRoutes from './routes/rolesRoutes';
 
 const app = express();
@@ -8,8 +8,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/auth', authRoutes);
-app.use('/api', roleRoutes);
+app.use('/api', userRoutes);
+app.use('/auth', roleRoutes);
 
 //global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
