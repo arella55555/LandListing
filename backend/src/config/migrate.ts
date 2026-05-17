@@ -1,6 +1,6 @@
 import pool from "./db";
 
-export export async function migrate() {
+export async function migrate() {
   try {
     await pool.query(`
       -- ============================================================
@@ -29,7 +29,7 @@ export export async function migrate() {
         -- CATEGORIES
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS categories (
+        CREATE TABLE IF NOT EXISTS categories (
         id              SERIAL PRIMARY KEY,
         name            VARCHAR(60) NOT NULL UNIQUE,
         description     TEXT,
@@ -42,14 +42,13 @@ export export async function migrate() {
         ('Commercial',   'Commercial lots and properties', '🏢'),
         ('Industrial',   'Industrial lots and factories', '🏭'),
         ('Farm Lot',     'Farm lots and coconut lands', '🥥')
-        ON CONFLICT (name) DO NOTHING
         ON CONFLICT (name) DO NOTHING;
 
         -- ============================================================
         -- LISTINGS
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS listings (
+        CREATE TABLE IF NOT EXISTS listings (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         seller_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         category_id         INT NOT NULL REFERENCES categories(id),
@@ -74,7 +73,7 @@ export export async function migrate() {
         -- LISTING IMAGES
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS listing_images (
+        CREATE TABLE IF NOT EXISTS listing_images (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         listing_id          UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
         image_url           TEXT NOT NULL,
@@ -86,7 +85,7 @@ export export async function migrate() {
         -- NEGOTIATIONS
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS negotiations (
+        CREATE TABLE IF NOT EXISTS negotiations (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         listing_id          UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
         buyer_id            UUID NOT NULL REFERENCES users(id),
@@ -104,7 +103,7 @@ export export async function migrate() {
         -- MESSAGES
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS messages (
+        CREATE TABLE IF NOT EXISTS messages (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         negotiation_id      UUID NOT NULL REFERENCES negotiations(id) ON DELETE CASCADE,
         sender_id           UUID NOT NULL REFERENCES users(id),
@@ -119,7 +118,7 @@ export export async function migrate() {
         -- SAVED LISTINGS / FAVORITES
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS saved_listings (
+        CREATE TABLE IF NOT EXISTS saved_listings (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         listing_id          UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
@@ -131,7 +130,7 @@ export export async function migrate() {
         -- REVIEWS
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS reviews (
+        CREATE TABLE IF NOT EXISTS reviews (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         reviewer_id         UUID NOT NULL REFERENCES users(id),
         seller_id           UUID NOT NULL REFERENCES users(id),
@@ -146,7 +145,7 @@ export export async function migrate() {
         -- ADMIN LOGS
         -- ============================================================
 
-        CREATE TABLE IF NOT EXISTS IF NOT EXISTS admin_logs (
+        CREATE TABLE IF NOT EXISTS admin_logs (
         id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         admin_id            UUID NOT NULL REFERENCES users(id),
         action              VARCHAR(80) NOT NULL,
@@ -160,9 +159,9 @@ export export async function migrate() {
     console.log("Migration successful");
   } catch (err) {
     console.error(err);
-  } finally {
-    await pool.end();  
-  }
+  } //finally {
+    //await pool.end();  
+  //}
 }
 
 ////migrate(); 
