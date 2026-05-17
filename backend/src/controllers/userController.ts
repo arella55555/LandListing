@@ -65,6 +65,16 @@ export const getUser = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+
+    const result = await pool.query('SELECT * FROM users ORDER BY created_at DESC');
+    res.status(200).json({ users: result.rows });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching users", error });
+  }
+};
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
