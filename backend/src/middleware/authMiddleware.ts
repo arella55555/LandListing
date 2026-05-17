@@ -1,11 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '../types/express';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
+type UserRole = 'buyer' | 'seller' | 'admin';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        role: UserRole;
+      };
+    }
+  }
+}
+
 interface JwtPayload {
-  id: number;
+  id: string; 
   role: UserRole;
 }
 
@@ -19,12 +31,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    
     req.user = { 
       id: decoded.id,
       role: decoded.role 
     }; 
+    
     next(); 
   } catch (error) {
     return res.status(403).json({ message: "Invalid or expired token." });
   }
 };
+
