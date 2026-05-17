@@ -159,9 +159,6 @@ export async function migrate() {
     console.log("Migration successful");
   } catch (err) {
     console.error(err);
-  } finally {
-    await pool.end(); 
-  }
+  } 
 }
 
-//migrate(); 
