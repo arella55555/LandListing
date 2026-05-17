@@ -1,11 +1,15 @@
-import dotenv from "dotenv";
-import app from "./src/app";
+import express from "express";
+import { migrate } from "./src/config/migrate";
 
-dotenv.config();
+const app = express();
+const PORT = 5000;
 
-const PORT = process.env.PORT || 5000;
+async function startServer() {
+  await migrate();
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
 
+startServer();
