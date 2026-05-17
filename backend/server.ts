@@ -7,9 +7,6 @@ const PORT = 5000;
 async function startServer() {
   await migrate();
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
-}
-
-startServer();
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
