@@ -1,8 +1,8 @@
-import { db } from "./db";
+import { pool } from "./db";
 
 async function migrate() {
   try {
-    await db.query(`
+    await pool.query(`
       -- ============================================================
         --  lupa.ph – Clean Database Schema
         -- ============================================================
@@ -159,7 +159,7 @@ async function migrate() {
   } catch (err) {
     console.error(err);
   } finally {
-    await db.end();
+    await pool.end();
   }
 }
 
