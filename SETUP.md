@@ -14,11 +14,9 @@
 - npm install react-native-paper
 - npm install @react-native-async-storage/async-storage
 
-# backend
+# cd backend
 - npm init -y
-
-install Backend Dependencies
-
+- install Backend Dependencies
 - npm install express cors dotenv pg bcryptjs jsonwebtoken multer
 - npm install typescript ts-node-dev @types/node --save-dev
 
@@ -63,7 +61,7 @@ paste below and change accordingly
 - DB_PASSWORD=your_password_here
 - DB_PORT=5432
 
-JWT_SECRET=your_secret_here (ignore this for now)
+- JWT_SECRET=your_secret_here (ignore this for now)
 
 
 # Do ipconfig

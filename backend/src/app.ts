@@ -17,4 +17,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ message: "Something went wrong on the server." });
 });
 
+app.get("/", (req, res) => {
+  res.send("Lupa.ph API running");
+});
+
 export default app;
