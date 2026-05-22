@@ -1,9 +1,26 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import jwt from 'jsonwebtoken';
 
 type TitleStatus = 'TCT' | 'OCT' | 'tax_dec' | 'other';
 type ListingType = 'sale' | 'rent' | 'lease';
 type ListingStatus = 'draft' | 'pending' | 'active' | 'sold' | 'leased' | 'rented' | 'rejected' | 'archived';
+
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+const getOptionalUserId = (req: Request): string | null => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return null;
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    return decoded.id;
+  } catch {
+    return null; // Ignore invalid tokens and treat user as a public guest
+  }
+}
 
 export const createListing = async (req: Request, res: Response) => {
   try {
@@ -35,9 +52,18 @@ export const createListing = async (req: Request, res: Response) => {
 };
 
 export const getAllListings = async (req: Request, res: Response) => {
-  try {
+    try {
+    const currentUserId = getOptionalUserId(req);
+    // SQL LEFT JOIN: Checks if a matching row exists in saved_listings for this user
+    const query = `
+      SELECT l.*, 
+             CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END as is_saved
+      FROM listings l
+      LEFT JOIN saved_listings s ON l.id = s.listing_id AND s.user_id = $1
+      ORDER BY l.created_at DESC
+    `;
 
-    const result = await pool.query('SELECT * FROM listings ORDER BY created_at DESC');
+    const result = await pool.query(query, [currentUserId]);
     res.status(200).json({ listings: result.rows });
   } catch (error) {
     res.status(500).json({ message: "Error fetching listings", error });
@@ -45,9 +71,19 @@ export const getAllListings = async (req: Request, res: Response) => {
 };
 
 export const getListing = async (req: Request, res: Response) => {
-  try {
+    try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM listings WHERE id = $1', [id]);
+    const currentUserId = getOptionalUserId(req);
+
+    const query = `
+      SELECT l.*, 
+             CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END as is_saved
+      FROM listings l
+      LEFT JOIN saved_listings s ON l.id = s.listing_id AND s.user_id = $1
+      WHERE l.id = $2
+    `;
+
+    const result = await pool.query(query, [currentUserId, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Listing not found" });

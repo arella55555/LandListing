@@ -5,6 +5,7 @@ import listingRoutes from './routes/listingRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import imageRoutes from './routes/imageRoutes';
 import negotiationRoutes from './routes/negotiationRoutes';
+import favoriteRoutes from './routes/favoriteRoutes';
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/api', userRoutes, listingRoutes, categoryRoutes);
 app.use('/api/listing-image', imageRoutes);
 app.use('/api/negotiations', negotiationRoutes);
+app.use('/api/favorite', favoriteRoutes);
 
 //global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
