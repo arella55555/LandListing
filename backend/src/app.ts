@@ -3,12 +3,17 @@ import cors from "cors";
 import userRoutes from './routes/userRoutes';
 import listingRoutes from './routes/listingRoutes';
 import categoryRoutes from './routes/categoryRoutes';
+import imageRoutes from './routes/imageRoutes';
+import negotiationRoutes from './routes/negotiationRoutes';
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 app.use('/api', userRoutes, listingRoutes, categoryRoutes);
+app.use('/api/listing-image', imageRoutes);
+app.use('/api/negotiations', negotiationRoutes);
 
 //global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

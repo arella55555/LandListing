@@ -16,7 +16,7 @@ export const createCategory = async (req: Request, res: Response) => {
 
     res.status(201).json({ message: "Category created successfully", category: result.rows[0] });
   } catch (error: any) {
-    // Handle unique constraint violation for category names
+  
     if (error.code === '23505') {
       return res.status(400).json({ message: "A category with this name already exists." });
     }
@@ -35,7 +35,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
 
 export const getCategory = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // Handles standard SERIAL integer ID
+    const { id } = req.params; 
 
     const result = await pool.query('SELECT * FROM categories WHERE id = $1', [id]);
 
@@ -92,7 +92,7 @@ export const deleteCategory = async (req: Request, res: Response) => {
 
     res.status(200).json({ message: "Category deleted successfully" });
   } catch (error: any) {
-    // Handle foreign key constraint if listings are using this category
+
     if (error.code === '23503') {
       return res.status(400).json({ 
         message: "Cannot delete category. It is currently linked to active listings." 
