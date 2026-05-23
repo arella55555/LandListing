@@ -39,7 +39,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, role: user.role, is_verified: user.is_verified }, JWT_SECRET, { expiresIn: '24h' });
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
     res.status(500).json({ message: "Login failed", error });
@@ -123,5 +123,39 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(200).json({ message: "User account permanently deleted" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting user", error });
+  }
+};
+
+export const verifyUserAccount = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id; 
+
+    const result = await pool.query(
+      'UPDATE users SET is_verified = TRUE, updated_at = NOW() WHERE id = $1 RETURNING id, role, is_verified',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User account context missing." });
+    }
+
+    const updatedUser = result.rows[0];
+
+    const newToken = jwt.sign(
+      { 
+        id: updatedUser.id, 
+        role: updatedUser.role,
+        is_verified: true
+      }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({ 
+      message: "Account verified successfully!", 
+      token: newToken 
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Verification processing execution dropped.", error });
   }
 };

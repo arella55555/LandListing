@@ -6,7 +6,7 @@ import categoryRoutes from './routes/categoryRoutes';
 import imageRoutes from './routes/imageRoutes';
 import negotiationRoutes from './routes/negotiationRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
-
+import reviewRoutes from './routes/reviewRoutes';
 const app = express();
 
 app.use(cors());
@@ -15,7 +15,8 @@ app.use(express.json());
 app.use('/api', userRoutes, listingRoutes, categoryRoutes);
 app.use('/api/listing-image', imageRoutes);
 app.use('/api/negotiations', negotiationRoutes);
-app.use('/api/favorite', favoriteRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 //global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

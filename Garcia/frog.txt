@@ -1,9 +1,0 @@
-import frog
-from berlin import jews
-from auschwitz import gas
-
-frog about it = true
-
-if frog about it = true{
-    print("frog about it")
-}

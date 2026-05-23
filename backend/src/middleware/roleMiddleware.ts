@@ -1,15 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Define roles strictly matching your database schema constraint
 type UserRole = 'buyer' | 'seller' | 'admin';
 
-// Extend Express Request interface locally to handle compilation checks smoothly
 declare global {
   namespace Express {
     interface Request {
       user?: {
         id: string;
         role: UserRole;
+        is_verified: boolean;
       };
     }
   }

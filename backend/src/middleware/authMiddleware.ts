@@ -11,6 +11,7 @@ declare global {
       user?: {
         id: string;
         role: UserRole;
+        is_verified: boolean;
       };
     }
   }
@@ -19,6 +20,7 @@ declare global {
 interface JwtPayload {
   id: string; 
   role: UserRole;
+  is_verified: boolean;
 }
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
@@ -34,7 +36,8 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     
     req.user = { 
       id: decoded.id,
-      role: decoded.role 
+      role: decoded.role,
+      is_verified: decoded.is_verified 
     }; 
     
     next(); 

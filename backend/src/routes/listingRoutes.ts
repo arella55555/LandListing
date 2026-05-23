@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createListing, getAllListings, getListing, updateListing, deleteListing } from '../controllers/listingController';
 import { authenticateToken } from '../middleware/authMiddleware';
 import { authorizeRoles } from '../middleware/roleMiddleware';
+import { requireVerification } from '../middleware/verifyMiddleware';
 
 const router = Router();
 
@@ -10,8 +11,8 @@ router.get('/listings', getAllListings);
 router.get('/listings/:id', getListing);
 
 // Protected routes 
-router.post('/post/listings', authenticateToken, authorizeRoles('seller', 'admin'), createListing);
-router.put('/listings/:id', authenticateToken, authorizeRoles('seller', 'admin'), updateListing);
+router.post('/post/listings', authenticateToken, authorizeRoles('seller', 'admin'), requireVerification, createListing);
+router.put('/listings/:id', authenticateToken, authorizeRoles('seller', 'admin'), requireVerification, updateListing);
 router.delete('/listings/:id', authenticateToken, authorizeRoles('seller', 'admin'), deleteListing);
 
 export default router;
