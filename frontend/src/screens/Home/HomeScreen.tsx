@@ -92,7 +92,7 @@ export default function HomeScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lupa ph sample</Text>
+        <Text style={styles.headerTitle}>Lupa ph sampleg</Text>
       </View>
 
       <View style={styles.searchRow}>
