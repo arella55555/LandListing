@@ -1,5 +1,5 @@
-import HomeScreen from "../src/screens/Home/HomeScreen";
-
-export default function App() {
-  return <HomeScreen />;
-}
+// app/index.tsx
+// Expo Router uses this as the root route.
+// _layout.tsx defines the Stack — this file just re-exports HomeScreen.
+import HomeScreen from '../src/screens/Home/HomeScreen';
+export default HomeScreen;
