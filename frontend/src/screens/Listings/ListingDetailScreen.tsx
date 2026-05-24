@@ -1,6 +1,6 @@
 /**
  * ListingDetailScreen.tsx  –  lupa.ph
- * Uses expo-router: useRouter() + useLocalSearchParams()
+ * Uses shared useListings hook for delete + favorite.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +10,9 @@ import {
   Dimensions, ActivityIndicator, Alert, Platform, FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { listingService, Listing } from '../../services/listingService';
+import { useListings } from '../../hooks/useListings';
+import { Listing } from '../../services/listingService';
+import { listingService } from '../../services/listingService';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -33,39 +35,41 @@ const STATUS_COLORS: Record<string, string> = {
   draft: '#9CA3AF', rejected: '#EF4444',
 };
 
+const MY_SELLER_ID = 'seller-1'; // TODO: replace with real auth
+
 export default function ListingDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string; data?: string }>();
+  const { deleteListing, toggleFavorite } = useListings();
 
   const seedListing: Listing | null = params.data
     ? (JSON.parse(params.data as string) as Listing)
     : null;
 
   const [listing, setListing]       = useState<Listing | null>(seedListing);
-  const [loading, setLoading]       = useState(!seedListing);
+  const [loading, setLoading] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
 
-  const CURRENT_USER_ID = 'seller-1';
-  const isOwner = listing?.seller_id === CURRENT_USER_ID;
+  const isOwner = listing?.seller_id === MY_SELLER_ID;
 
   useEffect(() => {
-    const id = params.id as string;
-    if (!id || (seedListing && seedListing.images)) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await listingService.getById(id);
-        if (!cancelled) setListing(data);
-      } catch {
-        Alert.alert('Error', 'Could not load listing.');
-        router.back();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const id = params.id as string;
+  if (!id || seedListing) return;  // ← changed line
+  let cancelled = false;
+  (async () => {
+    setLoading(true);
+    try {
+      const data = await listingService.getById(id);
+      if (!cancelled) setListing(data);
+    } catch {
+      Alert.alert('Error', 'Could not load listing.');
+      router.back();
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const images: string[] =
     listing?.images?.map(i => i.image_url) ??
@@ -75,22 +79,19 @@ export default function ListingDetailScreen() {
     if (!listing) return;
     const newVal = !listing.is_favorited;
     setListing(prev => prev ? { ...prev, is_favorited: newVal } : prev);
-    try {
-      await listingService.toggleFavorite({ ...listing, is_favorited: !newVal });
-    } catch {
-      setListing(prev => prev ? { ...prev, is_favorited: !newVal } : prev);
-    }
+    await toggleFavorite(listing.id);
   };
 
   const confirmDelete = () => {
-    Alert.alert('Delete Listing', 'Are you sure?', [
+    Alert.alert('Delete Listing', 'Are you sure you want to delete this listing?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
           if (!listing) return;
-          await listingService.remove(listing.id);
-          router.back();
+          const ok = await deleteListing(listing.id);
+          if (ok) router.back();
+          else Alert.alert('Error', 'Failed to delete listing.');
         },
       },
     ]);
@@ -126,7 +127,7 @@ export default function ListingDetailScreen() {
             />
           ) : (
             <View style={[styles.heroImage, styles.heroPlaceholder]}>
-              <Text style={{ color: TEXT_LIGHT }}>No image</Text>
+              <Text style={{ color: TEXT_LIGHT, fontSize: 48 }}>🏞</Text>
             </View>
           )}
 
@@ -156,14 +157,10 @@ export default function ListingDetailScreen() {
           </View>
 
           <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaText}>
-                ⊙ {[listing.barangay, listing.municipality, listing.province].filter(Boolean).join(', ')}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaText}>⬚ {fmtArea(listing.area_sqm)}</Text>
-            </View>
+            <Text style={styles.metaText}>
+              ⊙ {[listing.barangay, listing.municipality, listing.province].filter(Boolean).join(', ')}
+            </Text>
+            <Text style={styles.metaText}>⬚ {fmtArea(listing.area_sqm)}</Text>
           </View>
 
           <View style={styles.tagsRow}>
@@ -227,7 +224,7 @@ export default function ListingDetailScreen() {
 
 const HERO_H = 260;
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: BG },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   heroWrapper: { position: 'relative', height: HERO_H, backgroundColor: '#E5E7EB' },
@@ -245,7 +242,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.88)',
     alignItems: 'center', justifyContent: 'center', elevation: 3,
   },
-  backIcon: { fontSize: 26, color: '#111827', lineHeight: 30, marginTop: -2 },
+  backIcon: { fontSize: 26, color: TEXT_DARK, lineHeight: 30, marginTop: -2 },
   typeBadge: {
     position: 'absolute', bottom: 16, left: 16,
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -257,39 +254,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'flex-start', gap: 12, marginBottom: 10,
   },
-  title: { flex: 1, fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.4 },
+  title: { flex: 1, fontSize: 22, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.4 },
   price: { fontSize: 18, fontWeight: '700', color: PRIMARY, flexShrink: 0 },
   metaRow: { flexDirection: 'row', gap: 16, marginBottom: 12, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontSize: 13, color: '#6B7280' },
+  metaText: { fontSize: 13, color: TEXT_MED },
   tagsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
   tag: { backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
-  tagText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  tagText: { fontSize: 12, fontWeight: '600', color: TEXT_MED },
   divider: { height: 1, backgroundColor: DIVIDER, marginBottom: 16 },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  description: { fontSize: 15, color: '#6B7280', lineHeight: 22 },
+  sectionLabel: { fontSize: 16, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
+  description: { fontSize: 15, color: TEXT_MED, lineHeight: 22 },
   actionBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 16, paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 30 : 14,
-    backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F3F4F6', elevation: 8,
+    backgroundColor: BG, borderTopWidth: 1, borderTopColor: DIVIDER, elevation: 8,
   },
   favoriteBtn: {
     width: 48, height: 48, borderRadius: 12,
     borderWidth: 1.5, borderColor: '#E5E7EB',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: BG,
   },
-  favIcon: { fontSize: 22, color: '#9CA3AF' },
+  favIcon: { fontSize: 22, color: TEXT_LIGHT },
   favIconActive: { color: '#EF4444' },
   editBtn: {
     flex: 1, height: 48, borderRadius: 12,
     borderWidth: 1.5, borderColor: '#E5E7EB',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, backgroundColor: '#FFF',
+    gap: 4, backgroundColor: BG,
   },
-  editIcon: { fontSize: 15, color: '#111827' },
-  editBtnText: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  editIcon: { fontSize: 15, color: TEXT_DARK },
+  editBtnText: { fontSize: 14, fontWeight: '600', color: TEXT_DARK },
   deleteBtn: {
     width: 48, height: 48, borderRadius: 12,
     backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center',

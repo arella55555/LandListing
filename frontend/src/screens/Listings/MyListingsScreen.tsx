@@ -1,16 +1,16 @@
 /**
  * MyListingsScreen.tsx  –  lupa.ph
- * Uses expo-router: useRouter()
+ * Uses shared useListings hook for delete + update to reflect instantly.
  */
 
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, SafeAreaView, StatusBar, Alert,
-  ActivityIndicator, Platform, RefreshControl,
+  Platform, RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMyListings } from '../../hooks/useListings';
+import { useListings } from '../../hooks/useListings';
 import { Listing } from '../../services/listingService';
 
 const PRIMARY    = '#27AE60';
@@ -31,12 +31,16 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   rejected: { bg: '#FEE2E2', text: '#DC2626' },
 };
 
+const MY_SELLER_ID = 'seller-1'; // TODO: replace with real auth user id
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH');
 
 export default function MyListingsScreen() {
   const router = useRouter();
-  const { listings, loading, error, refetch, deleteListing } = useMyListings();
+  const { listings: allListings, deleteListing, refetch } = useListings();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Only show listings owned by current user
+  const listings = allListings.filter(l => l.seller_id === MY_SELLER_ID);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -59,7 +63,7 @@ export default function MyListingsScreen() {
 
   const renderRow = ({ item }: { item: Listing }) => {
     const statusStyle = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
-    const imgUri = item.primary_image_url ?? item.images?.[0]?.image_url;
+    const imgUri = item.primary_image_url ?? item.images?.[0]?.image_url ?? (item as any).image_url;
 
     return (
       <TouchableOpacity
@@ -122,35 +126,24 @@ export default function MyListingsScreen() {
         <Text style={styles.headerTitle}>My Listings</Text>
       </View>
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={PRIMARY} />
-        </View>
-      ) : error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={refetch}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={listings}
-          keyExtractor={item => item.id}
-          renderItem={renderRow}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>🏞</Text>
-              <Text style={styles.emptyTitle}>No listings yet</Text>
-              <Text style={styles.emptySubtitle}>Tap + to create your first listing.</Text>
-            </View>
-          }
-        />
-      )}
+      <FlatList
+        data={listings}
+        keyExtractor={item => item.id}
+        renderItem={renderRow}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyIcon}>🏞</Text>
+            <Text style={styles.emptyTitle}>No listings yet</Text>
+            <Text style={styles.emptySubtitle}>Tap + to create your first listing.</Text>
+          </View>
+        }
+      />
 
       <TouchableOpacity
         style={styles.fab}
@@ -206,28 +199,28 @@ const styles = StyleSheet.create({
   info: { flex: 1, gap: 4 },
   rowTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
   rowPrice: { fontSize: 14, fontWeight: '600', color: PRIMARY },
-  statusBadge: { alignSelf: 'flex-start', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, marginTop: 2 },
+  statusBadge: {
+    alignSelf: 'flex-start', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3, marginTop: 2,
+  },
   statusText: { fontSize: 11, fontWeight: '700' },
   actions: { alignItems: 'center', justifyContent: 'center', gap: 10, marginLeft: 10 },
   actionBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   editIcon: { fontSize: 18, color: TEXT_MED },
   deleteIcon: { fontSize: 18 },
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  errorText: { fontSize: 15, color: TEXT_MED, textAlign: 'center', marginBottom: 16 },
-  retryBtn: { backgroundColor: PRIMARY, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
-  retryText: { color: '#FFF', fontWeight: '700' },
   emptyBox: { marginTop: 80, alignItems: 'center', gap: 10 },
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK },
   emptySubtitle: { fontSize: 14, color: TEXT_MED, textAlign: 'center' },
   fab: {
-    position: 'absolute', bottom: 72, right: 20, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', elevation: 6,
+    position: 'absolute', bottom: 72, right: 20, width: 56, height: 56,
+    borderRadius: 28, backgroundColor: PRIMARY,
+    alignItems: 'center', justifyContent: 'center', elevation: 6,
   },
   fabIcon: { fontSize: 28, color: '#FFF', lineHeight: 32 },
   tabBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: BG,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    flexDirection: 'row', backgroundColor: BG,
     borderTopWidth: 1, borderTopColor: DIVIDER,
     paddingBottom: Platform.OS === 'ios' ? 20 : 6, paddingTop: 8, elevation: 8,
   },

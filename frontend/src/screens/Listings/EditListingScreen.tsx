@@ -1,7 +1,6 @@
 /**
  * EditListingScreen.tsx  –  lupa.ph
- * Uses expo-router: useRouter() + useLocalSearchParams()
- * ALL hooks are called at the top — no conditional hooks.
+ * Uses shared useListings hook for update + delete.
  */
 
 import React, { useState } from 'react';
@@ -11,7 +10,8 @@ import {
   ActivityIndicator, Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { listingService, Listing, UpdateListingPayload } from '../../services/listingService';
+import { useListings } from '../../hooks/useListings';
+import { Listing, UpdateListingPayload } from '../../services/listingService';
 
 const PRIMARY       = '#27AE60';
 const PRIMARY_LIGHT = '#E8F8EF';
@@ -80,19 +80,18 @@ function listingToForm(listing: Listing): FormState {
 export default function EditListingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string }>();
+  const { updateListing, deleteListing } = useListings();
 
-  // Parse listing from route params
   const listing: Listing | null = params.data
     ? (JSON.parse(params.data as string) as Listing)
     : null;
 
-  // ── ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN ──
+  // ALL hooks at top — no conditional hooks
   const [form, setForm]     = useState<FormState>(() => listing ? listingToForm(listing) : EMPTY_FORM);
   const [submitting, setSub]= useState(false);
   const [deleting, setDel]  = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
-  // ── Now safe to early return ───────────────────────────
   if (!listing) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -140,6 +139,7 @@ export default function EditListingScreen() {
 
   const handleUpdate = async () => {
     if (!validate()) return;
+    if (submitting) return;
     setSub(true);
     try {
       const payload: UpdateListingPayload = {
@@ -153,10 +153,8 @@ export default function EditListingScreen() {
         title_status: form.title_status, listing_type: form.listing_type,
         negotiable: form.negotiable, image_urls: form.image_urls,
       };
-      await listingService.update(listing.id, payload);
-      Alert.alert('Updated!', 'Your listing has been updated.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      const result = await updateListing(listing.id, payload);
+      if (result) router.back();
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Failed to update.');
     } finally {
@@ -171,12 +169,11 @@ export default function EditListingScreen() {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
           setDel(true);
-          try {
-            await listingService.remove(listing.id);
+          const ok = await deleteListing(listing.id);
+          if (ok) {
             router.back();
-          } catch (err: any) {
-            Alert.alert('Error', err?.message ?? 'Failed to delete.');
-          } finally {
+          } else {
+            Alert.alert('Error', 'Failed to delete.');
             setDel(false);
           }
         },
@@ -329,14 +326,23 @@ export default function EditListingScreen() {
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.updateBtn, submitting && { opacity: 0.7 }]}
-          onPress={handleUpdate} disabled={submitting || deleting}>
-          {submitting
-            ? <ActivityIndicator color="#FFF" />
-            : <Text style={styles.updateBtnText}>Update Listing</Text>}
+        <TouchableOpacity
+          style={[styles.updateBtn, submitting && { opacity: 0.6, backgroundColor: '#888' }]}
+          onPress={handleUpdate} disabled={submitting || deleting}
+        >
+          {submitting ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <ActivityIndicator color="#FFF" />
+              <Text style={styles.updateBtnText}>Updating...</Text>
+            </View>
+          ) : (
+            <Text style={styles.updateBtnText}>Update Listing</Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.deleteBtn, deleting && { opacity: 0.7 }]}
-          onPress={handleDelete} disabled={submitting || deleting}>
+        <TouchableOpacity
+          style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+          onPress={handleDelete} disabled={submitting || deleting}
+        >
           {deleting
             ? <ActivityIndicator color="#FFF" size="small" />
             : <Text style={styles.deleteBtnText}>🗑</Text>}

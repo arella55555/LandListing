@@ -1,9 +1,7 @@
 /**
  * AddListingScreen.tsx  –  lupa.ph
- * Uses expo-router: useRouter()
  */
 
-import { useListings } from '../../hooks/useListings';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
@@ -11,7 +9,8 @@ import {
   ActivityIndicator, Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { listingService, CreateListingPayload } from '../../services/listingService';
+import { useListings } from '../../hooks/useListings';
+import { CreateListingPayload } from '../../services/listingService';
 
 const PRIMARY       = '#27AE60';
 const PRIMARY_LIGHT = '#E8F8EF';
@@ -57,10 +56,11 @@ const INITIAL: FormState = {
 
 export default function AddListingScreen() {
   const router = useRouter();
+  const { createListing } = useListings();
   const [form, setForm]     = useState<FormState>(INITIAL);
   const [submitting, setSub]= useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const { createListing } = useListings()
+
   const set = (key: keyof FormState, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: undefined }));
@@ -91,20 +91,25 @@ export default function AddListingScreen() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (submitting) return;
     setSub(true);
     try {
       const payload: CreateListingPayload = {
         category_id: form.category_id, title: form.title.trim(),
         description: form.description.trim(), price: Number(form.price),
         area_sqm: Number(form.area_sqm),
-        latitude: Number(form.latitude) || 0, longitude: Number(form.longitude) || 0,
+        latitude: Number(form.latitude) || 0,
+        longitude: Number(form.longitude) || 0,
         barangay: form.barangay.trim() || undefined,
         municipality: form.municipality.trim(), province: form.province.trim(),
         title_status: form.title_status, listing_type: form.listing_type,
         negotiable: form.negotiable, image_urls: form.image_urls,
       };
-      await createListing(payload);   
-      Alert.alert('Success', 'Listing created!', [{ text: 'OK', onPress: () => router.back() }]);
+      const result = await createListing(payload);
+      if (result) {
+        setForm(INITIAL);
+        router.back();
+      }
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Failed to create listing.');
     } finally {
@@ -258,11 +263,18 @@ export default function AddListingScreen() {
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-          onPress={handleSubmit} disabled={submitting}>
-          {submitting
-            ? <ActivityIndicator color="#FFF" />
-            : <Text style={styles.submitBtnText}>Create Listing</Text>}
+        <TouchableOpacity
+          style={[styles.submitBtn, submitting && { opacity: 0.6, backgroundColor: '#888' }]}
+          onPress={handleSubmit} disabled={submitting}
+        >
+          {submitting ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <ActivityIndicator color="#FFF" />
+              <Text style={styles.submitBtnText}>Creating...</Text>
+            </View>
+          ) : (
+            <Text style={styles.submitBtnText}>Create Listing</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
