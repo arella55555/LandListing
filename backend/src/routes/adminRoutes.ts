@@ -5,12 +5,11 @@ import { authorizeRoles } from '../middleware/roleMiddleware';
 
 const router = Router();
 
-// Completely lock down this entire router workspace to Admins only
 router.use(authenticateToken);
 router.use(authorizeRoles('admin'));
 
-router.post('/', createAdminLog);      // POST /api/admin-logs
-router.get('/', getAllAdminLogs);       // GET /api/admin-logs
-router.get('/:id', getAdminLogById);   // GET /api/admin-logs/:id
+router.post('/', createAdminLog);      
+router.get('/', getAllAdminLogs);     
+router.get('/:id', getAdminLogById);   
 
 export default router;

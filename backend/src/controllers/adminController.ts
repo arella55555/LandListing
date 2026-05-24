@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
-// 1. Create an Admin Log Entry
+
 export const createAdminLog = async (req: Request, res: Response) => {
   try {
-    const admin_id = req.user?.id; // Extracted securely from the active token
+    const admin_id = req.user?.id; 
     const { action, target_type, target_id, notes } = req.body;
 
     if (!action || !target_type || !target_id) {
@@ -23,10 +23,9 @@ export const createAdminLog = async (req: Request, res: Response) => {
   }
 };
 
-// 2. Fetch All Audit Logs (Admin Only)
 export const getAllAdminLogs = async (req: Request, res: Response) => {
   try {
-    // JOINs the users table so the dashboard displays the administrator's actual name
+    
     const result = await pool.query(
       `SELECT al.*, u.full_name as admin_name 
        FROM admin_logs al
@@ -39,7 +38,6 @@ export const getAllAdminLogs = async (req: Request, res: Response) => {
   }
 };
 
-// 3. Fetch a Specific Audit Log by ID (Admin Only)
 export const getAdminLogById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
