@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
-import { Listing } from '../../services/listingService';
-import { listingService } from '../../services/listingService';
+import { Listing, listingService } from '../../services/listingService';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -46,30 +45,32 @@ export default function ListingDetailScreen() {
     ? (JSON.parse(params.data as string) as Listing)
     : null;
 
+  // Never show loading if we already have seed data
   const [listing, setListing]       = useState<Listing | null>(seedListing);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]       = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
 
   const isOwner = listing?.seller_id === MY_SELLER_ID;
 
+  // Only fetch from API if we have NO seed data
   useEffect(() => {
-  const id = params.id as string;
-  if (!id || seedListing) return;  // ← changed line
-  let cancelled = false;
-  (async () => {
-    setLoading(true);
-    try {
-      const data = await listingService.getById(id);
-      if (!cancelled) setListing(data);
-    } catch {
-      Alert.alert('Error', 'Could not load listing.');
-      router.back();
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  })();
-  return () => { cancelled = true; };
-}, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    const id = params.id as string;
+    if (!id || seedListing) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await listingService.getById(id);
+        if (!cancelled) setListing(data);
+      } catch {
+        Alert.alert('Error', 'Could not load listing.');
+        router.back();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const images: string[] =
     listing?.images?.map(i => i.image_url) ??
@@ -112,6 +113,7 @@ export default function ListingDetailScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <ScrollView style={styles.scroll} bounces={false} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
         <View style={styles.heroWrapper}>
           {images.length > 0 ? (
             <FlatList
@@ -127,7 +129,7 @@ export default function ListingDetailScreen() {
             />
           ) : (
             <View style={[styles.heroImage, styles.heroPlaceholder]}>
-              <Text style={{ color: TEXT_LIGHT, fontSize: 48 }}>🏞</Text>
+              <Text style={{ fontSize: 48 }}>🏞</Text>
             </View>
           )}
 
@@ -150,6 +152,7 @@ export default function ListingDetailScreen() {
           </View>
         </View>
 
+        {/* Body */}
         <View style={styles.body}>
           <View style={styles.titleRow}>
             <Text style={styles.title} numberOfLines={2}>{listing.title}</Text>
@@ -184,6 +187,7 @@ export default function ListingDetailScreen() {
         </View>
       </ScrollView>
 
+      {/* Action Bar */}
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.favoriteBtn} onPress={handleFavorite}>
           <Text style={[styles.favIcon, listing.is_favorited && styles.favIconActive]}>
