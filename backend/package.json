@@ -17,7 +17,10 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.7.0",
+<<<<<<< HEAD
+=======
     "@types/pg": "^8.20.0",
+>>>>>>> origin/arella
     "body-parser": "^2.2.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
