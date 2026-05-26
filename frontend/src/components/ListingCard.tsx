@@ -1,50 +1,53 @@
 import React from 'react';
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Listing } from '../types/listing';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+
+export interface ListingPreview {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  location: string;
+  beds: number;
+  baths: number;
+}
 
 interface ListingCardProps {
-  listing: Listing;
-  onPress?: () => void;
+  listing: ListingPreview;
+  onPress?: (listing: ListingPreview) => void;
 }
 
 const formatPrice = (value: number) =>
-  new Intl.NumberFormat('en-US', {
+  new Intl.NumberFormat('en-PH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'PHP',
     maximumFractionDigits: 0,
   }).format(value);
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing, onPress }) => {
-  const imageSource = listing.images?.[0]
-    ? { uri: listing.images[0] }
-    : undefined;
+  const handlePress = () => {
+    if (onPress) {
+      onPress(listing);
+      return;
+    }
 
-  const statusColor =
-    listing.status === 'available' ? '#2E7D32' : '#F9A825';
+    Alert.alert('Listing preview', `Open details for ${listing.title}`);
+  };
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.85}
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`Open details for ${listing.title}`}
     >
       <View style={styles.imageWrapper}>
-        {imageSource ? (
-          <Image source={imageSource} style={styles.image} resizeMode="cover" />
-        ) : (
-          <View style={styles.placeholder}>
-            <Ionicons name="image-outline" size={28} color="#9E9E9E" />
-          </View>
-        )}
-        <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-          <Text style={styles.statusText}>{listing.status}</Text>
+        <Image
+          source={{ uri: listing.image }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        <View style={styles.imageOverlay}>
+          <Text style={styles.priceTag}>{formatPrice(listing.price)}</Text>
         </View>
       </View>
 
@@ -53,85 +56,86 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, onPress }) => {
           {listing.title}
         </Text>
 
-        <View style={styles.metaRow}>
-          <Ionicons name="location-outline" size={14} color="#666" />
-          <Text style={styles.metaText}>{listing.location}</Text>
-        </View>
+        <Text style={styles.location} numberOfLines={1}>
+          {listing.location}
+        </Text>
 
-        <View style={styles.metaRow}>
-          <Ionicons name="expand-outline" size={14} color="#666" />
-          <Text style={styles.metaText}>{listing.area.toLocaleString()} sq ft</Text>
+        <View style={styles.detailsRow}>
+          <Text style={styles.detailPill}>{listing.beds} beds</Text>
+          <Text style={styles.detailPill}>{listing.baths} baths</Text>
         </View>
-
-        <Text style={styles.price}>{formatPrice(listing.price)}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
     shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  cardPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.99 }],
   },
   imageWrapper: {
-    height: 140,
-    width: '100%',
-    backgroundColor: '#EDEDED',
+    position: 'relative',
+    height: 170,
+    backgroundColor: '#E2E8F0',
   },
   image: {
     width: '100%',
     height: '100%',
   },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusBadge: {
+  imageOverlay: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    left: 12,
+    bottom: 12,
     borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
   },
-  statusText: {
+  priceTag: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'capitalize',
+    fontSize: 13,
+    fontWeight: '800',
   },
   content: {
-    padding: 12,
+    padding: 14,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    color: '#4B5563',
-  },
-  price: {
-    marginTop: 6,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#2E7D32',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
+  location: {
+    fontSize: 13,
+    color: '#475569',
+    marginBottom: 12,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailPill: {
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+    color: '#0F172A',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 

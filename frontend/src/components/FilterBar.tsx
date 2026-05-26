@@ -1,150 +1,139 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { FilterOptions } from '../types/listing';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+export type HomeFilterState = {
+  propertyType: 'all' | 'land' | 'single-family' | 'townhome' | 'farm';
+  priceRange: 'all' | 'under-300k' | '300k-600k' | '600k-plus';
+};
 
 interface FilterBarProps {
-  onFilterChange: (filters: FilterOptions) => void;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  onFilterChange: (filters: HomeFilterState) => void;
 }
 
-const categoryOptions = ['all', 'agricultural', 'commercial', 'residential', 'industrial'] as const;
-const statusOptions = ['all', 'available', 'pending', 'sold'] as const;
+const propertyOptions: HomeFilterState['propertyType'][] = [
+  'all',
+  'land',
+  'single-family',
+  'townhome',
+  'farm',
+];
 
-const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
-  const [filters, setFilters] = useState<FilterOptions>({});
+const priceOptions: HomeFilterState['priceRange'][] = [
+  'all',
+  'under-300k',
+  '300k-600k',
+  '600k-plus',
+];
 
-  const selectedCategory = filters.category ?? 'all';
-  const selectedStatus = filters.status ?? 'all';
+const formatPropertyLabel = (value: HomeFilterState['propertyType']) => {
+  if (value === 'all') return 'All types';
+  return value.replace('-', ' ');
+};
 
-  const updateFilters = (nextFilters: FilterOptions) => {
-    setFilters(nextFilters);
-    onFilterChange(nextFilters);
-  };
+const pesoFormatter = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
 
-  const setCategory = (category: (typeof categoryOptions)[number]) => {
-    const next = {
-      ...filters,
-      category: category === 'all' ? undefined : category,
-    };
-    updateFilters(next);
-  };
+const formatPriceLabel = (value: HomeFilterState['priceRange']) => {
+  if (value === 'all') return 'Any price';
+  if (value === 'under-300k') return `Under ${pesoFormatter.format(17_400_000)}`;
+  if (value === '300k-600k') return `${pesoFormatter.format(17_400_000)} - ${pesoFormatter.format(34_800_000)}`;
+  return `${pesoFormatter.format(34_800_000)}+`;
+};
 
-  const setStatus = (status: (typeof statusOptions)[number]) => {
-    const next = {
-      ...filters,
-      status: status === 'all' ? undefined : status,
-    };
-    updateFilters(next);
-  };
+const FilterBar: React.FC<FilterBarProps> = ({
+  searchQuery,
+  onSearchChange,
+  onFilterChange,
+}) => {
+  const [activeFilters, setActiveFilters] = useState<HomeFilterState>({
+    propertyType: 'all',
+    priceRange: 'all',
+  });
 
-  const setNumber = (key: 'minPrice' | 'maxPrice' | 'minArea' | 'maxArea', value: string) => {
-    const parsed = value === '' ? undefined : Number(value);
-    const next = {
-      ...filters,
-      [key]: Number.isNaN(parsed) ? undefined : parsed,
-    };
-    updateFilters(next);
+  const summary = useMemo(() => {
+    const parts = [formatPropertyLabel(activeFilters.propertyType)];
+    parts.push(formatPriceLabel(activeFilters.priceRange));
+    return parts.join(' • ');
+  }, [activeFilters]);
+
+  const updateFilter = (next: Partial<HomeFilterState>) => {
+    const merged = { ...activeFilters, ...next };
+    setActiveFilters(merged);
+    onFilterChange(merged);
   };
 
   const resetFilters = () => {
-    const next = {};
-    setFilters(next);
-    onFilterChange(next);
+    const defaults = { propertyType: 'all', priceRange: 'all' } as HomeFilterState;
+    setActiveFilters(defaults);
+    onFilterChange(defaults);
   };
-
-  const summary = useMemo(() => {
-    const parts = [];
-    if (filters.category) parts.push(filters.category);
-    if (filters.status) parts.push(filters.status);
-    if (filters.location) parts.push(filters.location);
-    return parts.join(' • ') || 'Quick filters';
-  }, [filters]);
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Filters</Text>
+        <View>
+          <Text style={styles.title}>Find your next land listing</Text>
+          <Text style={styles.subtitle}>Search by location or narrow with quick filters.</Text>
+        </View>
         <Pressable onPress={resetFilters}>
           <Text style={styles.resetText}>Reset</Text>
         </Pressable>
       </View>
 
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search by city, county, or keywords"
+        value={searchQuery}
+        onChangeText={onSearchChange}
+        returnKeyType="search"
+        autoCapitalize="none"
+      />
+
       <Text style={styles.summary}>{summary}</Text>
 
-      <View style={styles.chipRow}>
-        {categoryOptions.map((option) => {
-          const isActive = selectedCategory === option;
-          return (
-            <Pressable
-              key={option}
-              style={[styles.chip, isActive && styles.activeChip]}
-              onPress={() => setCategory(option)}
-            >
-              <Text style={[styles.chipText, isActive && styles.activeChipText]}>
-                {option === 'all' ? 'All categories' : option}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionLabel}>Property type</Text>
+        <View style={styles.chipRow}>
+          {propertyOptions.map((option) => {
+            const active = activeFilters.propertyType === option;
+            return (
+              <Pressable
+                key={option}
+                style={[styles.chip, active && styles.activeChip]}
+                onPress={() => updateFilter({ propertyType: option })}
+              >
+                <Text style={[styles.chipText, active && styles.activeChipText]}>
+                  {formatPropertyLabel(option)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      <View style={styles.chipRow}>
-        {statusOptions.map((option) => {
-          const isActive = selectedStatus === option;
-          return (
-            <Pressable
-              key={option}
-              style={[styles.chip, isActive && styles.activeChip]}
-              onPress={() => setStatus(option)}
-            >
-              <Text style={[styles.chipText, isActive && styles.activeChipText]}>
-                {option === 'all' ? 'All status' : option}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={styles.inputsGrid}>
-        <TextInput
-          style={styles.input}
-          placeholder="Location"
-          value={filters.location ?? ''}
-          onChangeText={(value) => updateFilters({ ...filters, location: value })}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Min price"
-          keyboardType="numeric"
-          value={filters.minPrice?.toString() ?? ''}
-          onChangeText={(value) => setNumber('minPrice', value)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Max price"
-          keyboardType="numeric"
-          value={filters.maxPrice?.toString() ?? ''}
-          onChangeText={(value) => setNumber('maxPrice', value)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Min area"
-          keyboardType="numeric"
-          value={filters.minArea?.toString() ?? ''}
-          onChangeText={(value) => setNumber('minArea', value)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Max area"
-          keyboardType="numeric"
-          value={filters.maxArea?.toString() ?? ''}
-          onChangeText={(value) => setNumber('maxArea', value)}
-        />
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionLabel}>Price range</Text>
+        <View style={styles.chipRow}>
+          {priceOptions.map((option) => {
+            const active = activeFilters.priceRange === option;
+            return (
+              <Pressable
+                key={option}
+                style={[styles.chip, active && styles.activeChip]}
+                onPress={() => updateFilter({ priceRange: option })}
+              >
+                <Text style={[styles.chipText, active && styles.activeChipText]}>
+                  {formatPriceLabel(option)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -152,67 +141,88 @@ const FilterBar: React.FC<FilterBarProps> = ({ onFilterChange }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
   },
   resetText: {
-    color: '#2E7D32',
-    fontWeight: '700',
+    color: '#0F766E',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    color: '#0F172A',
+    fontSize: 15,
+    marginBottom: 12,
   },
   summary: {
-    color: '#4B5563',
+    color: '#334155',
     fontSize: 13,
-    marginBottom: 10,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
+  sectionRow: {
+    marginBottom: 12,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 8,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 10,
   },
   chip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
   },
   activeChip: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
   },
   chipText: {
-    color: '#111827',
-    fontWeight: '600',
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
   activeChipText: {
     color: '#FFFFFF',
-  },
-  inputsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  input: {
-    flexBasis: '47%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#111827',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
 });
 
