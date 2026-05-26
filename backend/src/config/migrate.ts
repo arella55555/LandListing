@@ -1,4 +1,4 @@
-import pool from "./db";
+import { pool } from "./db";
 
 export async function migrate() {
   try {
@@ -159,9 +159,6 @@ export async function migrate() {
     console.log("Migration successful");
   } catch (err) {
     console.error(err);
-  } finally {
-    await pool.end(); 
-  }
+  } 
 }
 
-//migrate(); 
