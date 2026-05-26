@@ -31,6 +31,24 @@ export const createListing = async (req: Request, res: Response) => {
       title_status, listing_type, status, negotiable
     } = req.body;
 
+    const duplicateCheck = await pool.query(
+      `SELECT id FROM listings 
+       WHERE seller_id = $1 
+       AND (
+         (latitude = $2 AND longitude = $3) 
+         OR (LOWER(title) = LOWER($4) AND LOWER(municipality) = LOWER($5) AND LOWER(province) = LOWER($6))
+       )
+       AND status NOT IN ('sold', 'leased', 'rented', 'archived')`, // Ignore finalized or archived deals
+      [seller_id, latitude, longitude, title, municipality, province]
+    );
+
+    // If a matching active listing is found, block the creation request immediately
+    if (duplicateCheck.rows.length > 0) {
+      return res.status(400).json({ 
+        message: "Duplicate listing detected. You have already posted an active property with this exact title or geographic location." 
+      });
+    }
+
     const result = await pool.query(
       `INSERT INTO listings (
         seller_id, category_id, title, description, price, area_sqm,

@@ -49,15 +49,37 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
   const reverseGeocode = async (lat: number, lon: number) => {
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
-      );
-      const data = await response.json();
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
+      const response = await fetch(url, {
+        headers: {
+          // Nominatim requires a valid User-Agent identifying your application
+          'User-Agent': 'lupa.ph - contact@lupa.ph',
+          'Accept': 'application/json'
+        }
+      });
+
+      const text = await response.text();
+      if (!response.ok) {
+        console.warn('Nominatim reverse geocode non-OK response', response.status, text);
+        setAddress('');
+        return;
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.warn('Reverse geocode returned non-JSON:', text.slice(0, 200));
+        setAddress('');
+        return;
+      }
+
       setAddress(
         data.address?.town || data.address?.municipality || data.display_name || ''
       );
     } catch (error) {
       console.error('Reverse geocoding error:', error);
+      setAddress('');
     }
   };
 
@@ -71,16 +93,40 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          text
-        )}&limit=5&countrycodes=ph`
-      );
-      const data = await response.json();
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        text
+      )}&limit=5&countrycodes=ph&accept-language=en`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'lupa.ph - contact@lupa.ph',
+          'Accept': 'application/json'
+        }
+      });
+
+      const textResponse = await response.text();
+      if (!response.ok) {
+        console.warn('Nominatim search non-OK response', response.status, textResponse);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(textResponse);
+      } catch (parseErr) {
+        console.warn('Search returned non-JSON:', textResponse.slice(0, 200));
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
       setSuggestions(data);
       setShowSuggestions(true);
     } catch (error) {
       console.error('Search error:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setLoading(false);
     }
