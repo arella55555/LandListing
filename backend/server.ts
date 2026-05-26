@@ -1,5 +1,5 @@
-import app from "./src/app";
-import { migrate } from "./src/config/migrate";
+import app from './src/app';
+import { migrate } from './src/config/migrate';
 
 const PORT = 5000;
 

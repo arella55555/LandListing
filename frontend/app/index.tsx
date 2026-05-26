@@ -1,5 +1,5 @@
-import HomeScreen from "../src/screens/Home/HomeScreen";
+import CreateListing from '../src/screens/Listings/CreateListing';
 
 export default function App() {
-  return <HomeScreen />;
+  return <CreateListing />;
 }
