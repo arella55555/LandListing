@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import app from "./src/app";
 import { migrate } from "./src/config/migrate";
 

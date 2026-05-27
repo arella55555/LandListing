@@ -13,7 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', userRoutes, listingRoutes, categoryRoutes);
+app.use('/api', userRoutes);
+app.use('/api', listingRoutes);
+app.use('/api', categoryRoutes);
+
 app.use('/api/listing-image', imageRoutes);
 app.use('/api/negotiations', negotiationRoutes);
 app.use('/api/favorites', favoriteRoutes);
