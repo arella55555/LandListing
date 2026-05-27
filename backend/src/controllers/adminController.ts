@@ -8,17 +8,72 @@ export class AdminController {
     res.json(data);
   }
 
-  static async users(req: Request, res: Response) {
-    const users = await AdminService.getUsers();
-    res.json(users);
-  }
+  static async users(
+  req: Request,
+  res: Response
+) {
 
-  static async listings(req: Request, res: Response) {
+  const users =
+    await AdminService.getUsers();
+
+  res.json({
+    users,
+  });
+}
+
+static async approveSeller(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.approveSeller(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
+static async rejectSeller(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.rejectSeller(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
+static async unsuspendUser(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.unsuspendUser(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
+  static async listings(
+  req: Request,
+  res: Response
+) {
 
   const listings =
     await AdminService.getListings();
 
-  res.json(listings);
+  res.json({
+    listings,
+  });
 }
 
   static async approveListing(req: any, res: Response) {
