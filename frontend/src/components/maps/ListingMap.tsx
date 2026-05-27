@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Modal,
   Linking,
+  Platform,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import { MaterialIcons } from '@expo/vector-icons';
 
 interface ListingMapProps {
@@ -28,10 +29,20 @@ const ListingMap: React.FC<ListingMapProps> = ({
 
   const delta = 0.02 / Math.pow(2, zoomLevel - 14);
 
-  const openGoogleMaps = () => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+  const openMapApp = () => {
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?ll=${latitude},${longitude}`,
+      android: `geo:${latitude},${longitude}?q=${latitude},${longitude}`,
+      default: `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}`,
+    });
+
+    if (!url) {
+      alert('Unable to open map app');
+      return;
+    }
+
     Linking.openURL(url).catch(() => {
-      alert('Could not open Google Maps');
+      alert('Could not open map app');
     });
   };
 
@@ -46,6 +57,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
     <MapView
       style={styles.map}
       provider={PROVIDER_DEFAULT}
+      mapType="none"
       initialRegion={{
         latitude,
         longitude,
@@ -59,6 +71,12 @@ const ListingMap: React.FC<ListingMapProps> = ({
         longitudeDelta: delta,
       }}
     >
+      <UrlTile
+        urlTemplate="https://tile.openstreetmap.de/{z}/{x}/{y}.png"
+        maximumZ={19}
+        zIndex={1}
+        tileSize={256}
+      />
       <Marker coordinate={{ latitude, longitude }} title={title} />
     </MapView>
   );
@@ -77,9 +95,9 @@ const ListingMap: React.FC<ListingMapProps> = ({
           <MaterialIcons name="fullscreen" size={18} color="#007AFF" />
           <Text style={styles.buttonLabel}>Fullscreen</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.textButton} onPress={openGoogleMaps}>
+        <TouchableOpacity style={styles.textButton} onPress={openMapApp}>
           <MaterialIcons name="location-on" size={18} color="#007AFF" />
-          <Text style={styles.buttonLabel}>Open in Maps</Text>
+          <Text style={styles.buttonLabel}>Open in Map App</Text>
         </TouchableOpacity>
       </View>
       <Text style={styles.attribution}>© OpenStreetMap contributors</Text>
@@ -89,6 +107,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
           <MapView
             style={styles.fullscreenMap}
             provider={PROVIDER_DEFAULT}
+            mapType="none"
             initialRegion={{
               latitude,
               longitude,
@@ -96,6 +115,12 @@ const ListingMap: React.FC<ListingMapProps> = ({
               longitudeDelta: delta,
             }}
           >
+              <UrlTile
+              urlTemplate="https://tile.openstreetmap.de/{z}/{x}/{y}.png"
+              maximumZ={19}
+              zIndex={1}
+              tileSize={256}
+            />
             <Marker coordinate={{ latitude, longitude }} title={title} />
           </MapView>
           <TouchableOpacity style={styles.closeButton} onPress={() => setFullscreenVisible(false)}>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -40,6 +40,10 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState<string>('');
   const [satelliteMode, setSatelliteMode] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tileUrl = satelliteMode
+    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    : 'https://tile.openstreetmap.de/{z}/{x}/{y}.png';
 
   const handleMapPress = (e: any) => {
     const { latitude, longitude } = e.nativeEvent.coordinate;
@@ -52,10 +56,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
       const response = await fetch(url, {
         headers: {
-          // Nominatim requires a valid User-Agent identifying your application
           'User-Agent': 'lupa.ph - contact@lupa.ph',
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+        },
       });
 
       const text = await response.text();
@@ -83,14 +86,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     }
   };
 
-  const handleSearch = async (text: string) => {
-    setSearchQuery(text);
-    if (text.length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
+  const performSearch = async (text: string): Promise<SearchSuggestion[]> => {
     setLoading(true);
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -99,8 +95,8 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'lupa.ph - contact@lupa.ph',
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+        },
       });
 
       const textResponse = await response.text();
@@ -108,7 +104,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
         console.warn('Nominatim search non-OK response', response.status, textResponse);
         setSuggestions([]);
         setShowSuggestions(false);
-        return;
+        return [];
       }
 
       let data: any;
@@ -118,18 +114,39 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
         console.warn('Search returned non-JSON:', textResponse.slice(0, 200));
         setSuggestions([]);
         setShowSuggestions(false);
-        return;
+        return [];
       }
 
-      setSuggestions(data);
-      setShowSuggestions(true);
+      const results = Array.isArray(data) ? data : [];
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+      return results;
     } catch (error) {
       console.error('Search error:', error);
       setSuggestions([]);
       setShowSuggestions(false);
+      return [];
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    if (text.length < 2) {
+      setLoading(false);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      performSearch(text);
+    }, 300);
   };
 
   const handleSelectSuggestion = (suggestion: SearchSuggestion) => {
@@ -188,6 +205,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
     onSelect(selectedLocation.latitude, selectedLocation.longitude, address);
   };
 
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -197,14 +222,31 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           placeholder="Search location..."
           value={searchQuery}
           onChangeText={handleSearch}
+          onSubmitEditing={async () => {
+            if (searchQuery.length >= 2) {
+              const results = await performSearch(searchQuery);
+              if (results.length === 1) {
+                handleSelectSuggestion(results[0]);
+              }
+            }
+          }}
           editable={!loading}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          blurOnSubmit={false}
         />
         {loading && <ActivityIndicator size="small" color="#007AFF" />}
       </View>
 
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.suggestionsContainer}>
-          <ScrollView nestedScrollEnabled style={styles.suggestionsList}>
+          <ScrollView
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            style={styles.suggestionsList}
+          >
             {suggestions.map((suggestion, index) => (
               <TouchableOpacity
                 key={index}
@@ -225,6 +267,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_DEFAULT}
+        mapType="none"
         initialRegion={{
           latitude: selectedLocation.latitude,
           longitude: selectedLocation.longitude,
@@ -232,8 +275,13 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
           longitudeDelta: 0.015,
         }}
         onPress={handleMapPress}
-        mapType={satelliteMode ? 'satellite' : 'standard'}
       >
+        <UrlTile
+          urlTemplate={tileUrl}
+          maximumZ={19}
+          zIndex={1}
+          tileSize={256}
+        />
         <Marker
           coordinate={selectedLocation}
           draggable
