@@ -10,17 +10,26 @@ import {
   ScrollView,
 } from "react-native";
 
-import { useNavigation } from "@react-navigation/native";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useNavigation,
+} from "@react-navigation/native";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import { getUsers } from "../../../services/adminService";
+import {
+  getUsers,
+} from "../../../services/adminService";
 
 import { COLORS } from "../../../constants/color";
 
 /* =========================================================
-   ADMIN USERS SCREEN
+   TYPES
 ========================================================= */
 
 type MainTab =
@@ -35,48 +44,52 @@ type SellerVerificationTab =
   | "approved"
   | "rejected";
 
+type User = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  is_verified: boolean;
+  is_suspended: boolean;
+  seller_verification_status?: string;
+};
+
+/* =========================================================
+   SCREEN
+========================================================= */
+
 export default function AdminUsersScreen() {
 
   const navigation = useNavigation<any>();
 
-  const [users, setUsers] = useState<any[]>([]);
-  const [filteredUsers, setFilteredUsers] =
-    useState<any[]>([]);
+  const [users, setUsers] =
+    useState<User[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [refreshing, setRefreshing] =
     useState(false);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] =
+    useState("");
 
-  /* MAIN USER FILTER */
   const [selectedTab, setSelectedTab] =
     useState<MainTab>("all");
 
-  /* SELLER VERIFICATION FILTER */
   const [
     sellerVerificationTab,
     setSellerVerificationTab,
   ] =
     useState<SellerVerificationTab>("all");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [
-    users,
-    search,
-    selectedTab,
-    sellerVerificationTab,
-  ]);
-
   /* =========================================================
      FETCH
   ========================================================= */
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   async function fetchUsers() {
 
@@ -84,13 +97,13 @@ export default function AdminUsersScreen() {
 
       setLoading(true);
 
-      const data = await getUsers();
+      const data =
+        await getUsers();
 
-      const usersList = data?.users || [];
-      
+      const usersList =
+        data?.users || [];
 
       setUsers(usersList);
-      setFilteredUsers(usersList);
 
     } catch (error) {
 
@@ -105,153 +118,219 @@ export default function AdminUsersScreen() {
       setRefreshing(false);
     }
   }
-  
 
-//FILTERS
-  function applyFilters() {
+  /* =========================================================
+     RESET SELLER FILTER
+  ========================================================= */
 
-    let filtered = [...users];
+  useEffect(() => {
 
-    /* SEARCH */
+    if (
+      selectedTab !== "sellers"
+    ) {
 
-    if (search.trim()) {
+      setSellerVerificationTab(
+        "all"
+      );
+    }
 
-      filtered = filtered.filter((user) => {
+  }, [selectedTab]);
+
+  /* =========================================================
+     FILTERED USERS
+  ========================================================= */
+
+  const filteredUsers =
+    useMemo(() => {
+
+      let filtered =
+        [...users];
+
+      /* SEARCH */
+
+      if (search.trim()) {
 
         const keyword =
           search.toLowerCase();
 
-        return (
-          user.full_name
-            ?.toLowerCase()
-            ?.includes(keyword) ||
+        filtered =
+          filtered.filter(
+            (user) => {
 
-          user.email
-            ?.toLowerCase()
-            ?.includes(keyword) ||
+              return (
 
-          user.role
-            ?.toLowerCase()
-            ?.includes(keyword)
-        );
-      });
-    }
+                user.full_name
+                  ?.toLowerCase()
+                  ?.includes(
+                    keyword
+                  ) ||
 
-    /* MAIN TABS */
+                user.email
+                  ?.toLowerCase()
+                  ?.includes(
+                    keyword
+                  ) ||
 
-    switch (selectedTab) {
-
-      case "buyers":
-
-        filtered = filtered.filter(
-          (u) =>
-            u.role === "buyer"
-        );
-
-        break;
-
-      case "sellers":
-
-        filtered = filtered.filter(
-          (u) =>
-            u.role === "seller"
-        );
-
-        break;
-
-      case "suspended":
-
-        filtered = filtered.filter(
-          (u) => u.is_suspended
-        );
-
-        break;
-    }
-
-    /* SELLER VERIFICATION FILTERS
-       ONLY APPLIES UNDER SELLERS TAB
-    */
-
-    if (selectedTab === "sellers") {
-
-      switch (sellerVerificationTab) {
-
-        case "pending":
-
-          filtered = filtered.filter(
-            (u) =>
-              u.seller_verification_status ===
-              "pending"
+                user.role
+                  ?.toLowerCase()
+                  ?.includes(
+                    keyword
+                  )
+              );
+            }
           );
+      }
+
+      /* MAIN FILTERS */
+
+      switch (
+        selectedTab
+      ) {
+
+        case "buyers":
+
+          filtered =
+            filtered.filter(
+              (u) =>
+                u.role ===
+                "buyer"
+            );
 
           break;
 
-        case "approved":
+        case "sellers":
 
-          filtered = filtered.filter(
-            (u) =>
-              u.seller_verification_status ===
-              "approved"
-          );
+          filtered =
+            filtered.filter(
+              (u) =>
+                u.role ===
+                "seller"
+            );
 
           break;
 
-        case "rejected":
+        case "suspended":
 
-          filtered = filtered.filter(
-            (u) =>
-              u.seller_verification_status ===
-              "rejected"
-          );
+          filtered =
+            filtered.filter(
+              (u) =>
+                u.is_suspended
+            );
 
           break;
       }
-    }
 
-    setFilteredUsers(filtered);
-  }
+      /* SELLER VERIFICATION */
+
+      if (
+        selectedTab ===
+        "sellers"
+      ) {
+
+        switch (
+          sellerVerificationTab
+        ) {
+
+          case "pending":
+
+            filtered =
+              filtered.filter(
+                (u) =>
+                  (
+                    u.seller_verification_status ||
+                    "pending"
+                  ) ===
+                  "pending"
+              );
+
+            break;
+
+          case "approved":
+
+            filtered =
+              filtered.filter(
+                (u) =>
+                  u.seller_verification_status ===
+                  "approved"
+              );
+
+            break;
+
+          case "rejected":
+
+            filtered =
+              filtered.filter(
+                (u) =>
+                  u.seller_verification_status ===
+                  "rejected"
+              );
+
+            break;
+        }
+      }
+
+      return filtered;
+
+    }, [
+      users,
+      search,
+      selectedTab,
+      sellerVerificationTab,
+    ]);
 
   /* =========================================================
      STATS
   ========================================================= */
 
-  const stats = useMemo(() => {
+  const stats =
+    useMemo(() => {
 
-    return {
+      return {
 
-      totalUsers:
-        users.length,
+        totalUsers:
+          users.length,
 
-      activeUsers:
-        users.filter(
-          (u) => !u.is_suspended
-        ).length,
+        activeUsers:
+          users.filter(
+            (u) =>
+              !u.is_suspended
+          ).length,
 
-      sellers:
-        users.filter(
-          (u) => u.role === "seller"
-        ).length,
+        sellers:
+          users.filter(
+            (u) =>
+              u.role ===
+              "seller"
+          ).length,
 
-      buyers:
-        users.filter(
-          (u) => u.role === "buyer"
-        ).length,
+        buyers:
+          users.filter(
+            (u) =>
+              u.role ===
+              "buyer"
+          ).length,
 
-      suspended:
-        users.filter(
-          (u) => u.is_suspended
-        ).length,
+        suspended:
+          users.filter(
+            (u) =>
+              u.is_suspended
+          ).length,
 
-      pendingSellerRequests:
-        users.filter(
-          (u) =>
-            u.role === "seller" &&
-            u.seller_verification_status ===
-              "pending"
-        ).length,
-    };
+        pendingSellerRequests:
+          users.filter(
+            (u) =>
+              u.role ===
+                "seller" &&
 
-  }, [users]);
+              (
+                u.seller_verification_status ||
+                "pending"
+              ) ===
+                "pending"
+          ).length,
+      };
+
+    }, [users]);
 
   /* =========================================================
      LOADING
@@ -261,14 +340,24 @@ export default function AdminUsersScreen() {
 
     return (
 
-      <View style={styles.loaderContainer}>
+      <View
+        style={
+          styles.loaderContainer
+        }
+      >
 
         <ActivityIndicator
           size="large"
-          color={COLORS.primary}
+          color={
+            COLORS.primary
+          }
         />
 
-        <Text style={styles.loadingText}>
+        <Text
+          style={
+            styles.loadingText
+          }
+        >
           Loading users...
         </Text>
 
@@ -287,77 +376,88 @@ export default function AdminUsersScreen() {
       <FlatList
         data={filteredUsers}
         keyExtractor={(item) =>
-          item.id?.toString()
+          item.id
         }
-
+        showsVerticalScrollIndicator={
+          false
+        }
+        contentContainerStyle={{
+          paddingBottom: 120,
+        }}
         refreshControl={
+
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={
+              refreshing
+            }
             onRefresh={() => {
-              setRefreshing(true);
+
+              setRefreshing(
+                true
+              );
+
               fetchUsers();
             }}
           />
         }
 
-        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
 
-        contentContainerStyle={{
-          paddingBottom: 120,
-        }}
-
-        ListHeaderComponent={(
           <>
 
             {/* =========================================================
                 HEADER
             ========================================================= */}
 
-            <View style={styles.header}>
+            <View
+              style={
+                styles.header
+              }
+            >
 
               <View>
 
-                <Text style={styles.title}>
+                <Text
+                  style={
+                    styles.title
+                  }
+                >
                   Users
                 </Text>
 
-                <Text style={styles.subtitle}>
-                  Monitor platform users, sellers, suspensions & verification requests
+                <Text
+                  style={
+                    styles.subtitle
+                  }
+                >
+                  Monitor platform
+                  users,
+                  sellers,
+                  suspensions &
+                  verification
+                  requests
                 </Text>
 
               </View>
 
-              <View style={styles.headerActions}>
+              <View
+                style={
+                  styles.headerActions
+                }
+              >
 
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={() =>
-                    navigation.navigate(
-                      "AdminNotifications"
-                    )
+                <View
+                  style={
+                    styles.profileAvatar
                   }
                 >
 
-                  <Ionicons
-                    name="notifications-outline"
-                    size={22}
-                    color="#0F172A"
-                  />
-
-                  <View style={styles.badgeDot}>
-                    <Text style={styles.badgeDotText}>
-                      3
-                    </Text>
-                  </View>
-
-                </TouchableOpacity>
-
-                <View style={styles.profileAvatar}>
                   <Ionicons
                     name="person"
                     size={20}
                     color="#64748B"
                   />
+
                 </View>
 
               </View>
@@ -368,9 +468,17 @@ export default function AdminUsersScreen() {
                 SEARCH
             ========================================================= */}
 
-            <View style={styles.searchRow}>
+            <View
+              style={
+                styles.searchRow
+              }
+            >
 
-              <View style={styles.searchContainer}>
+              <View
+                style={
+                  styles.searchContainer
+                }
+              >
 
                 <Ionicons
                   name="search-outline"
@@ -380,16 +488,22 @@ export default function AdminUsersScreen() {
 
                 <TextInput
                   value={search}
-                  onChangeText={setSearch}
+                  onChangeText={
+                    setSearch
+                  }
                   placeholder="Search users by name, email or role..."
                   placeholderTextColor="#94A3B8"
-                  style={styles.searchInput}
+                  style={
+                    styles.searchInput
+                  }
                 />
 
               </View>
 
               <TouchableOpacity
-                style={styles.filterButton}
+                style={
+                  styles.filterButton
+                }
               >
 
                 <Ionicons
@@ -408,34 +522,46 @@ export default function AdminUsersScreen() {
 
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.statsWrapper}
+              showsHorizontalScrollIndicator={
+                false
+              }
+              style={
+                styles.statsWrapper
+              }
             >
 
               <StatsCard
                 title="Total Users"
-                value={stats.totalUsers}
+                value={
+                  stats.totalUsers
+                }
                 icon="people-outline"
                 color="#7C3AED"
               />
 
               <StatsCard
                 title="Active"
-                value={stats.activeUsers}
+                value={
+                  stats.activeUsers
+                }
                 icon="checkmark-circle-outline"
                 color="#16A34A"
               />
 
               <StatsCard
                 title="Sellers"
-                value={stats.sellers}
+                value={
+                  stats.sellers
+                }
                 icon="storefront-outline"
                 color="#2563EB"
               />
 
               <StatsCard
                 title="Buyers"
-                value={stats.buyers}
+                value={
+                  stats.buyers
+                }
                 icon="person-outline"
                 color="#F59E0B"
               />
@@ -452,42 +578,55 @@ export default function AdminUsersScreen() {
             </ScrollView>
 
             {/* =========================================================
-                MAIN FILTERS
+                FILTER TABS
             ========================================================= */}
 
             <ScrollView
               horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.tabsWrapper}
+              showsHorizontalScrollIndicator={
+                false
+              }
+              style={
+                styles.tabsWrapper
+              }
             >
 
               <FilterTab
                 label="All Users"
                 active={
-                  selectedTab === "all"
+                  selectedTab ===
+                  "all"
                 }
                 onPress={() =>
-                  setSelectedTab("all")
+                  setSelectedTab(
+                    "all"
+                  )
                 }
               />
 
               <FilterTab
                 label="Buyers"
                 active={
-                  selectedTab === "buyers"
+                  selectedTab ===
+                  "buyers"
                 }
                 onPress={() =>
-                  setSelectedTab("buyers")
+                  setSelectedTab(
+                    "buyers"
+                  )
                 }
               />
 
               <FilterTab
                 label="Sellers"
                 active={
-                  selectedTab === "sellers"
+                  selectedTab ===
+                  "sellers"
                 }
                 onPress={() =>
-                  setSelectedTab("sellers")
+                  setSelectedTab(
+                    "sellers"
+                  )
                 }
               />
 
@@ -507,18 +646,20 @@ export default function AdminUsersScreen() {
             </ScrollView>
 
             {/* =========================================================
-                SELLER VERIFICATION FILTERS
-                ONLY UNDER SELLERS
+                SELLER VERIFICATION
             ========================================================= */}
 
-            {selectedTab === "sellers" && (
+            {selectedTab ===
+              "sellers" && (
 
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={
                   false
                 }
-                style={styles.verificationTabs}
+                style={
+                  styles.verificationTabs
+                }
               >
 
                 <VerificationTab
@@ -577,9 +718,11 @@ export default function AdminUsersScreen() {
             )}
 
           </>
-        )}
+        }
 
-        renderItem={({ item }) => {
+        renderItem={({
+          item,
+        }) => {
 
           const verificationStatus =
             item.seller_verification_status;
@@ -587,62 +730,100 @@ export default function AdminUsersScreen() {
           return (
 
             <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.userCard}
+              activeOpacity={
+                0.9
+              }
+              style={
+                styles.userCard
+              }
               onPress={() =>
                 navigation.navigate(
                   "UserDetails",
-                  { user: item }
+                  {
+                    user: item,
+                    onUserUpdated:
+                      fetchUsers,
+                  }
                 )
               }
             >
 
               {/* TOP */}
 
-              <View style={styles.userTopRow}>
+              <View
+                style={
+                  styles.userTopRow
+                }
+              >
 
-                <View style={styles.avatar}>
+                <View
+                  style={
+                    styles.avatar
+                  }
+                >
 
-                  <Text style={styles.avatarText}>
-                    {item.full_name
-                      ?.charAt(0)
-                      ?.toUpperCase()}
+                  <Text
+                    style={
+                      styles.avatarText
+                    }
+                  >
+                    {item
+                      .full_name?.[0]
+                      ?.toUpperCase() ||
+                      "U"}
                   </Text>
 
                 </View>
 
-                <View style={{ flex: 1 }}>
+                <View
+                  style={{
+                    flex: 1,
+                  }}
+                >
 
-                  <Text style={styles.userName}>
-                    {item.full_name}
+                  <Text
+                    style={
+                      styles.userName
+                    }
+                  >
+                    {
+                      item.full_name
+                    }
                   </Text>
 
-                  <Text style={styles.userEmail}>
+                  <Text
+                    style={
+                      styles.userEmail
+                    }
+                  >
                     {item.email}
                   </Text>
 
-                  <Text style={styles.userMeta}>
-                    {item.role
-                      ?.charAt(0)
-                      ?.toUpperCase() +
-                      item.role?.slice(1)}
+                  <Text
+                    style={
+                      styles.userMeta
+                    }
+                  >
+                    {item.role}
                   </Text>
 
                 </View>
 
-                <View>
-                  <Ionicons
-                    name="ellipsis-vertical"
-                    size={20}
-                    color="#64748B"
-                  />
-                </View>
+                <Ionicons
+                  name="ellipsis-vertical"
+                  size={20}
+                  color="#64748B"
+                />
 
               </View>
 
               {/* BADGES */}
 
-              <View style={styles.badgesContainer}>
+              <View
+                style={
+                  styles.badgesContainer
+                }
+              >
 
                 <View
                   style={[
@@ -653,7 +834,11 @@ export default function AdminUsersScreen() {
                   ]}
                 >
 
-                  <Text style={styles.badgeText}>
+                  <Text
+                    style={
+                      styles.badgeText
+                    }
+                  >
                     {item.role}
                   </Text>
 
@@ -668,7 +853,11 @@ export default function AdminUsersScreen() {
                   ]}
                 >
 
-                  <Text style={styles.badgeText}>
+                  <Text
+                    style={
+                      styles.badgeText
+                    }
+                  >
                     {item.is_verified
                       ? "Verified"
                       : "Unverified"}
@@ -676,7 +865,8 @@ export default function AdminUsersScreen() {
 
                 </View>
 
-                {item.role === "seller" && (
+                {item.role ===
+                  "seller" && (
 
                   <View
                     style={[
@@ -687,9 +877,13 @@ export default function AdminUsersScreen() {
                     ]}
                   >
 
-                    <Text style={styles.badgeText}>
+                    <Text
+                      style={
+                        styles.badgeText
+                      }
+                    >
                       {verificationStatus ||
-                        "Pending"}
+                        "pending"}
                     </Text>
 
                   </View>
@@ -704,7 +898,11 @@ export default function AdminUsersScreen() {
                     ]}
                   >
 
-                    <Text style={styles.badgeText}>
+                    <Text
+                      style={
+                        styles.badgeText
+                      }
+                    >
                       Suspended
                     </Text>
 
@@ -715,37 +913,68 @@ export default function AdminUsersScreen() {
 
               {/* ACTIONS */}
 
-              <View style={styles.actionsRow}>
+              <View
+                style={
+                  styles.actionsRow
+                }
+              >
 
                 <TouchableOpacity
-                  style={styles.viewButton}
+                  style={
+                    styles.viewButton
+                  }
+                  onPress={() =>
+                    navigation.navigate(
+                      "UserDetails",
+                      {
+                        user: item,
+                        onUserUpdated:
+                          fetchUsers,
+                      }
+                    )
+                  }
                 >
 
-                  <Text style={styles.viewButtonText}>
+                  <Text
+                    style={
+                      styles.viewButtonText
+                    }
+                  >
                     View User
                   </Text>
 
                 </TouchableOpacity>
 
-                {item.role === "seller" &&
+                {item.role ===
+                  "seller" &&
                   verificationStatus ===
                     "pending" && (
 
                   <TouchableOpacity
-                    style={styles.reviewButton}
+                    style={
+                      styles.reviewButton
+                    }
                     onPress={() =>
                       navigation.navigate(
                         "UserDetails",
                         {
                           user: item,
-                          reviewMode: true,
+                          reviewMode:
+                            true,
+                          onUserUpdated:
+                            fetchUsers,
                         }
                       )
                     }
                   >
 
-                    <Text style={styles.reviewButtonText}>
-                      Review Verification
+                    <Text
+                      style={
+                        styles.reviewButtonText
+                      }
+                    >
+                      Review
+                      Verification
                     </Text>
 
                   </TouchableOpacity>
@@ -759,7 +988,11 @@ export default function AdminUsersScreen() {
 
         ListEmptyComponent={
 
-          <View style={styles.emptyContainer}>
+          <View
+            style={
+              styles.emptyContainer
+            }
+          >
 
             <Ionicons
               name="people-outline"
@@ -767,7 +1000,11 @@ export default function AdminUsersScreen() {
               color="#CBD5E1"
             />
 
-            <Text style={styles.emptyText}>
+            <Text
+              style={
+                styles.emptyText
+              }
+            >
               No users found
             </Text>
 
@@ -792,7 +1029,11 @@ function StatsCard({
 
   return (
 
-    <View style={styles.statsCard}>
+    <View
+      style={
+        styles.statsCard
+      }
+    >
 
       <View
         style={[
@@ -812,11 +1053,19 @@ function StatsCard({
 
       </View>
 
-      <Text style={styles.statsTitle}>
+      <Text
+        style={
+          styles.statsTitle
+        }
+      >
         {title}
       </Text>
 
-      <Text style={styles.statsValue}>
+      <Text
+        style={
+          styles.statsValue
+        }
+      >
         {value}
       </Text>
 
@@ -890,7 +1139,9 @@ function VerificationTab({
    HELPERS
 ========================================================= */
 
-function getRoleBadge(role: string) {
+function getRoleBadge(
+  role: string
+) {
 
   switch (role) {
 
@@ -909,7 +1160,7 @@ function getRoleBadge(role: string) {
 }
 
 function getVerificationBadge(
-  status: string
+  status?: string
 ) {
 
   switch (status) {
@@ -929,346 +1180,356 @@ function getVerificationBadge(
    STYLES
 ========================================================= */
 
-const styles = StyleSheet.create({
+const styles =
+  StyleSheet.create({
 
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
+    container: {
+      flex: 1,
+      backgroundColor:
+        "#F8FAFC",
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
 
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    loaderContainer: {
+      flex: 1,
+      justifyContent:
+        "center",
+      alignItems: "center",
+    },
 
-  loadingText: {
-    marginTop: 10,
-    color: "#64748B",
-  },
+    loadingText: {
+      marginTop: 10,
+      color: "#64748B",
+    },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
+    header: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      alignItems: "center",
+      marginBottom: 24,
+    },
 
-  title: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
+    title: {
+      fontSize: 34,
+      fontWeight: "800",
+      color: "#0F172A",
+    },
 
-  subtitle: {
-    marginTop: 4,
-    color: "#64748B",
-    maxWidth: 240,
-    lineHeight: 20,
-  },
+    subtitle: {
+      marginTop: 4,
+      color: "#64748B",
+      maxWidth: 240,
+      lineHeight: 20,
+    },
 
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
 
-  iconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    profileAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor:
+        "white",
+      justifyContent:
+        "center",
+      alignItems: "center",
+      marginLeft: 12,
+    },
 
-  badgeDot: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    width: 18,
-    height: 18,
-    borderRadius: 999,
-    backgroundColor: "#7C3AED",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    searchRow: {
+      flexDirection: "row",
+      marginBottom: 22,
+    },
 
-  badgeDotText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "700",
-  },
+    searchContainer: {
+      flex: 1,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor:
+        "white",
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+    },
 
-  profileAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    searchInput: {
+      flex: 1,
+      marginLeft: 10,
+      color: "#0F172A",
+    },
 
-  searchRow: {
-    flexDirection: "row",
-    marginBottom: 22,
-    gap: 10,
-  },
+    filterButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor:
+        "white",
+      justifyContent:
+        "center",
+      alignItems: "center",
+      marginLeft: 10,
+    },
 
-  searchContainer: {
-    flex: 1,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "white",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-  },
+    statsWrapper: {
+      marginBottom: 20,
+    },
 
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    color: "#0F172A",
-  },
+    statsCard: {
+      width: 170,
+      backgroundColor:
+        "white",
+      borderRadius: 24,
+      padding: 18,
+      marginRight: 14,
+    },
 
-  filterButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    statsIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      justifyContent:
+        "center",
+      alignItems: "center",
+      marginBottom: 14,
+    },
 
-  statsWrapper: {
-    marginBottom: 20,
-  },
+    statsTitle: {
+      color: "#64748B",
+      fontSize: 13,
+    },
 
-  statsCard: {
-    width: 170,
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 18,
-    marginRight: 14,
-  },
+    statsValue: {
+      marginTop: 8,
+      fontSize: 28,
+      fontWeight: "800",
+      color: "#0F172A",
+    },
 
-  statsIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-  },
+    tabsWrapper: {
+      marginBottom: 14,
+    },
 
-  statsTitle: {
-    color: "#64748B",
-    fontSize: 13,
-  },
+    filterTab: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor:
+        "#E2E8F0",
+      marginRight: 10,
+    },
 
-  statsValue: {
-    marginTop: 8,
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
+    activeFilterTab: {
+      backgroundColor:
+        "#7C3AED",
+    },
 
-  tabsWrapper: {
-    marginBottom: 14,
-  },
+    filterText: {
+      color: "#475569",
+      fontWeight: "700",
+    },
 
-  filterTab: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: "#E2E8F0",
-    marginRight: 10,
-  },
+    activeFilterText: {
+      color: "white",
+    },
 
-  activeFilterTab: {
-    backgroundColor: "#7C3AED",
-  },
+    verificationTabs: {
+      marginBottom: 20,
+    },
 
-  filterText: {
-    color: "#475569",
-    fontWeight: "700",
-  },
+    verificationTab: {
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderRadius: 999,
+      backgroundColor:
+        "#F1F5F9",
+      marginRight: 10,
+    },
 
-  activeFilterText: {
-    color: "white",
-  },
+    activeVerificationTab: {
+      backgroundColor:
+        "#0F172A",
+    },
 
-  verificationTabs: {
-    marginBottom: 20,
-  },
+    verificationText: {
+      color: "#475569",
+      fontWeight: "700",
+    },
 
-  verificationTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "#F1F5F9",
-    marginRight: 10,
-  },
+    activeVerificationText: {
+      color: "white",
+    },
 
-  activeVerificationTab: {
-    backgroundColor: "#0F172A",
-  },
+    userCard: {
+      backgroundColor:
+        "white",
+      borderRadius: 26,
+      padding: 18,
+      marginBottom: 16,
+    },
 
-  verificationText: {
-    color: "#475569",
-    fontWeight: "700",
-  },
+    userTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
 
-  activeVerificationText: {
-    color: "white",
-  },
+    avatar: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor:
+        "#7C3AED",
+      justifyContent:
+        "center",
+      alignItems: "center",
+      marginRight: 14,
+    },
 
-  userCard: {
-    backgroundColor: "white",
-    borderRadius: 26,
-    padding: 18,
-    marginBottom: 16,
-  },
+    avatarText: {
+      color: "white",
+      fontSize: 22,
+      fontWeight: "800",
+    },
 
-  userTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+    userName: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: "#0F172A",
+      textTransform:
+        "capitalize",
+    },
 
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    backgroundColor: "#7C3AED",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
+    userEmail: {
+      color: "#64748B",
+      marginTop: 4,
+    },
 
-  avatarText: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "800",
-  },
+    userMeta: {
+      marginTop: 4,
+      color: "#94A3B8",
+      fontSize: 12,
+      textTransform:
+        "capitalize",
+    },
 
-  userName: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
+    badgesContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginTop: 16,
+    },
 
-  userEmail: {
-    color: "#64748B",
-    marginTop: 4,
-  },
+    badge: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      marginRight: 8,
+      marginBottom: 8,
+    },
 
-  userMeta: {
-    marginTop: 4,
-    color: "#94A3B8",
-    fontSize: 12,
-  },
+    badgeText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#0F172A",
+      textTransform:
+        "capitalize",
+    },
 
-  badgesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 16,
-    gap: 8,
-  },
+    adminBadge: {
+      backgroundColor:
+        "#DBEAFE",
+    },
 
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
+    superadminBadge: {
+      backgroundColor:
+        "#EDE9FE",
+    },
 
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0F172A",
-    textTransform: "capitalize",
-  },
+    sellerBadge: {
+      backgroundColor:
+        "#DCFCE7",
+    },
 
-  adminBadge: {
-    backgroundColor: "#DBEAFE",
-  },
+    buyerBadge: {
+      backgroundColor:
+        "#FEF3C7",
+    },
 
-  superadminBadge: {
-    backgroundColor: "#EDE9FE",
-  },
+    verifiedBadge: {
+      backgroundColor:
+        "#DCFCE7",
+    },
 
-  sellerBadge: {
-    backgroundColor: "#DCFCE7",
-  },
+    unverifiedBadge: {
+      backgroundColor:
+        "#F1F5F9",
+    },
 
-  buyerBadge: {
-    backgroundColor: "#FEF3C7",
-  },
+    approvedBadge: {
+      backgroundColor:
+        "#DCFCE7",
+    },
 
-  verifiedBadge: {
-    backgroundColor: "#DCFCE7",
-  },
+    pendingBadge: {
+      backgroundColor:
+        "#FEF3C7",
+    },
 
-  unverifiedBadge: {
-    backgroundColor: "#F1F5F9",
-  },
+    rejectedBadge: {
+      backgroundColor:
+        "#FEE2E2",
+    },
 
-  approvedBadge: {
-    backgroundColor: "#DCFCE7",
-  },
+    suspendedBadge: {
+      backgroundColor:
+        "#FEE2E2",
+    },
 
-  pendingBadge: {
-    backgroundColor: "#FEF3C7",
-  },
+    actionsRow: {
+      flexDirection: "row",
+      marginTop: 18,
+    },
 
-  rejectedBadge: {
-    backgroundColor: "#FEE2E2",
-  },
+    viewButton: {
+      flex: 1,
+      backgroundColor:
+        "#E2E8F0",
+      paddingVertical: 13,
+      borderRadius: 14,
+      alignItems: "center",
+      marginRight: 5,
+    },
 
-  suspendedBadge: {
-    backgroundColor: "#FEE2E2",
-  },
+    reviewButton: {
+      flex: 1,
+      backgroundColor:
+        "#7C3AED",
+      paddingVertical: 13,
+      borderRadius: 14,
+      alignItems: "center",
+      marginLeft: 5,
+    },
 
-  actionsRow: {
-    flexDirection: "row",
-    marginTop: 18,
-    gap: 10,
-  },
+    viewButtonText: {
+      color: "#0F172A",
+      fontWeight: "700",
+    },
 
-  viewButton: {
-    flex: 1,
-    backgroundColor: "#E2E8F0",
-    paddingVertical: 13,
-    borderRadius: 14,
-    alignItems: "center",
-  },
+    reviewButtonText: {
+      color: "white",
+      fontWeight: "700",
+    },
 
-  reviewButton: {
-    flex: 1,
-    backgroundColor: "#7C3AED",
-    paddingVertical: 13,
-    borderRadius: 14,
-    alignItems: "center",
-  },
+    emptyContainer: {
+      alignItems: "center",
+      marginTop: 120,
+    },
 
-  viewButtonText: {
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-
-  reviewButtonText: {
-    color: "white",
-    fontWeight: "700",
-  },
-
-  emptyContainer: {
-    alignItems: "center",
-    marginTop: 120,
-  },
-
-  emptyText: {
-    marginTop: 12,
-    color: "#94A3B8",
-  },
-});
+    emptyText: {
+      marginTop: 12,
+      color: "#94A3B8",
+    },
+  });

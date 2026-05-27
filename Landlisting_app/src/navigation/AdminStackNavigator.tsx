@@ -6,6 +6,9 @@ import UserDetailsScreen from "../screens/Admin/Users/UserDetailsScreen";
 
 import ListingDetailsScreen
 from "../screens/Admin/Listings/ListingDetailsScreen";
+import AdminSettingsScreen from "../screens/Admin/Settings/AdminSettingsScreen";
+import AdminLogsScreen from "../screens/Admin/Logs/AdminLogsScreen";
+import AdminReportsScreen from "../screens/Admin/Logs/AdminReportScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -32,6 +35,33 @@ export default function AdminStackNavigator() {
         component={ListingDetailsScreen}
         options={{
           title: "Listing Details",
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="Reports"
+        component={AdminReportsScreen}
+        options={{
+          title: "Reports",
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="Logs"
+        component={AdminLogsScreen}
+        options={{
+          title: "Logs",
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="Settings"
+        component={AdminSettingsScreen}
+        options={{
+          title: "Settings",
           headerShown: false,
         }}
       />

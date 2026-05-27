@@ -30,8 +30,11 @@ export default function UserDetailsScreen() {
   const navigation =
     useNavigation<any>();
 
-  const { user, reviewMode } =
-    route.params;
+  const {
+    user,
+    reviewMode,
+    onUserUpdated,
+  } = route.params;
 
   async function handleApprove() {
 
@@ -44,6 +47,7 @@ export default function UserDetailsScreen() {
         "Seller approved"
       );
 
+      onUserUpdated?.();
       navigation.goBack();
 
     } catch {
@@ -66,6 +70,7 @@ export default function UserDetailsScreen() {
         "Seller rejected"
       );
 
+      onUserUpdated?.();
       navigation.goBack();
 
     } catch {
@@ -88,6 +93,7 @@ export default function UserDetailsScreen() {
         "User suspended"
       );
 
+      onUserUpdated?.();
       navigation.goBack();
 
     } catch {
@@ -110,6 +116,7 @@ export default function UserDetailsScreen() {
         "User unsuspended"
       );
 
+      onUserUpdated?.();
       navigation.goBack();
 
     } catch {

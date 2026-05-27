@@ -7,8 +7,7 @@ import { ADMIN_TABS } from "../constants/adminTabs";
 import AdminDashboardScreen from "../screens/Admin/Dashboard/AdminDashboardScreen";
 import AdminUsersScreen from "../screens/Admin/Users/AdminUsersScreen";
 import AdminListingsScreen from "../screens/Admin/Listings/AdminListingsScreen";
-import AdminLogsScreen from "../screens/Admin/Logs/AdminReportScreen";
-import AdminSettingsScreen from "../screens/Admin/Settings/AdminMoreScreen";
+import AdminMoreScreen from "../screens/Admin/Settings/AdminMoreScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -16,8 +15,7 @@ const SCREEN_MAP: any = {
   Dashboard: AdminDashboardScreen,
   Users: AdminUsersScreen,
   Listings: AdminListingsScreen,
-  Logs: AdminLogsScreen,
-  Settings: AdminSettingsScreen,
+  More: AdminMoreScreen,
 };
 
 export default function AdminTabNavigator() {

@@ -4,11 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 import DashboardScreen from '../screens/Admin/Dashboard/AdminDashboardScreen';
 import ListingsScreen from '../screens/Admin/Listings/AdminListingsScreen';
-import VerificationScreen from '../screens/Admin/Users/AdminUsersScreen';
-import AdminLogsScreen from '../screens/Admin/Logs/AdminLogsScreen';
-import MoreScreen from '../screens/Admin/Settings/AdminSettingsScreen';
+import MoreScreen from '../screens/Admin/Settings/AdminMoreScreen';
 
 import { COLORS } from '../constants/color';
+import AdminUsersScreen from '../screens/Admin/Users/AdminUsersScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -39,11 +38,11 @@ export default function BottomTabs() {
             case 'Listings':
               iconName = 'albums-outline';
               break;
-            case 'Verify':
-              iconName = 'shield-checkmark-outline';
+            case 'Users':
+              iconName = 'person-outline';
               break;
-            case 'Logs':
-              iconName = 'document-text-outline';
+            case 'More':
+              iconName = 'ellipsis-horizontal-outline';
               break;
             default:
               iconName = 'menu-outline';
@@ -53,11 +52,25 @@ export default function BottomTabs() {
         },
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Listings" component={ListingsScreen} />
-      <Tab.Screen name="Verify" component={VerificationScreen} />
-      <Tab.Screen name="Logs" component={AdminLogsScreen} />
-      <Tab.Screen name="More" component={MoreScreen} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+      />
+
+      <Tab.Screen
+        name="Users"
+        component={AdminUsersScreen}
+      />
+
+      <Tab.Screen
+        name="Listings"
+        component={ListingsScreen}
+      />
+
+      <Tab.Screen
+        name="More"
+        component={MoreScreen}
+      />
     </Tab.Navigator>
   );
 }

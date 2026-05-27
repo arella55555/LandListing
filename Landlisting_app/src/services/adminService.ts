@@ -87,7 +87,16 @@ export const suspendUser =
     }
   );
 
-  return await res.json();
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ||
+      "Failed to suspend user"
+    );
+  }
+
+  return data;
 };
 
 export const unsuspendUser =

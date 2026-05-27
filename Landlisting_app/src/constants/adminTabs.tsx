@@ -19,13 +19,8 @@ export const ADMIN_TABS = [
     icon: "home-outline",
   },
   {
-    name: "Logs",
-    label: "Logs",
+    name: "More",
+    label: "More",
     icon: "document-text-outline",
-  },
-  {
-    name: "Settings",
-    label: "Settings",
-    icon: "settings-outline",
   },
 ];
