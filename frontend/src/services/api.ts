@@ -1,4 +1,5 @@
-import axios from "axios";
+﻿import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
@@ -22,6 +23,21 @@ const getApiBaseUrl = () => {
 
 const API = axios.create({
   baseURL: getApiBaseUrl(),
+});
+
+API.interceptors.request.use(async (config) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    if (token) {
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return config;
 });
 
 export default API;

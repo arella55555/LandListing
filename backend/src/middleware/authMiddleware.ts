@@ -3,26 +3,46 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "lupa-secret-key";
 
-type AuthPayload = {
-  userId: string;
-  email: string;
-  role: string;
-};
+type UserRole = "buyer" | "seller" | "admin";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        role: UserRole;
+        is_verified: boolean;
+      };
+    }
+  }
+}
+
+interface JwtPayload {
+  id: string;
+  role: UserRole;
+  is_verified: boolean;
+}
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  const authHeader = req.headers["authorization"] as string | undefined;
+  const token = authHeader?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ error: "Authorization token is required." });
+    return res.status(401).json({ message: "Access denied. Token missing." });
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
-    (req as any).user = payload;
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      is_verified: decoded.is_verified,
+    };
+
     next();
   } catch (error) {
-    console.error("Token verification error:", error);
-    return res.status(401).json({ error: "Invalid or expired token." });
+    return res.status(403).json({ message: "Invalid or expired token." });
   }
 };
+
