@@ -143,8 +143,14 @@ export default function AdminUsersScreen() {
   const filteredUsers =
     useMemo(() => {
 
-      let filtered =
-        [...users];
+      /*let filtered =
+        [...users];*/
+
+        let filtered = users.filter(
+          (u) =>
+            u.role !== "admin" &&
+            u.role !== "superadmin"
+        );
 
       /* SEARCH */
 
@@ -203,8 +209,7 @@ export default function AdminUsersScreen() {
           filtered =
             filtered.filter(
               (u) =>
-                u.role === "seller" ||
-                u.seller_verification_status !== null
+                u.role === "seller" || (u.role === "buyer" && u.seller_verification_status !== null)
             );
 
           break;
