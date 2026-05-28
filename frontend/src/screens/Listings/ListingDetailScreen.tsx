@@ -12,6 +12,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
 import { Listing, listingService } from '../../services/listingService';
+import ListingMap from '../../components/maps/ListingMap';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -180,6 +181,21 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
+          {Number.isFinite(listing.latitude) && Number.isFinite(listing.longitude) && (
+            <View style={styles.mapSection}>
+              <Text style={styles.sectionLabel}>Location</Text>
+              <ListingMap
+                latitude={listing.latitude}
+                longitude={listing.longitude}
+                title={listing.title}
+                height={280}
+              />
+              <Text style={styles.mapCaption}>
+                {[listing.barangay, listing.municipality, listing.province].filter(Boolean).join(', ')}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.divider} />
           <Text style={styles.sectionLabel}>Description</Text>
           <Text style={styles.description}>{listing.description}</Text>
@@ -265,6 +281,8 @@ const styles = StyleSheet.create({
   tagsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
   tag: { backgroundColor: '#F3F4F6', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   tagText: { fontSize: 12, fontWeight: '600', color: TEXT_MED },
+  mapSection: { marginBottom: 16 },
+  mapCaption: { marginTop: 8, fontSize: 13, color: TEXT_MED, lineHeight: 18 },
   divider: { height: 1, backgroundColor: DIVIDER, marginBottom: 16 },
   sectionLabel: { fontSize: 16, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
   description: { fontSize: 15, color: TEXT_MED, lineHeight: 22 },

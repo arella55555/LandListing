@@ -6,11 +6,13 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
   TouchableOpacity, SafeAreaView, StatusBar, Alert,
-  ActivityIndicator, Image, Platform, KeyboardAvoidingView,
+  ActivityIndicator, Image, Platform, KeyboardAvoidingView, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useListings } from '../../hooks/useListings';
 import { CreateListingPayload } from '../../services/listingService';
+import LocationPicker from '../../components/maps/LocationPicker';
 
 const PRIMARY       = '#27AE60';
 const PRIMARY_LIGHT = '#E8F8EF';
@@ -56,10 +58,20 @@ const INITIAL: FormState = {
 
 export default function AddListingScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { createListing } = useListings();
   const [form, setForm]     = useState<FormState>(INITIAL);
   const [submitting, setSub]= useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    router.replace('/favorites');
+  };
 
   const set = (key: keyof FormState, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -72,6 +84,8 @@ export default function AddListingScreen() {
     if (!form.description.trim())  e.description = 'Description is required';
     if (!form.price || isNaN(Number(form.price))) e.price = 'Enter a valid price';
     if (!form.area_sqm || isNaN(Number(form.area_sqm))) e.area_sqm = 'Enter a valid area';
+    if (!form.latitude || isNaN(Number(form.latitude))) e.latitude = 'Choose a valid latitude';
+    if (!form.longitude || isNaN(Number(form.longitude))) e.longitude = 'Choose a valid longitude';
     if (!form.municipality.trim()) e.municipality = 'Municipality is required';
     if (!form.province.trim())     e.province    = 'Province is required';
     setErrors(e);
@@ -84,6 +98,15 @@ export default function AddListingScreen() {
     if (form.image_urls.includes(url)) { Alert.alert('Duplicate', 'Already added.'); return; }
     set('image_urls', [...form.image_urls, url]);
     set('imageInput', '');
+  };
+
+  const handleLocationSelect = (latitude: number, longitude: number, address?: string) => {
+    set('latitude', latitude.toFixed(7));
+    set('longitude', longitude.toFixed(7));
+    if (address && !form.barangay.trim()) {
+      set('barangay', address);
+    }
+    setShowLocationPicker(false);
   };
 
   const removeImage = (url: string) =>
@@ -108,7 +131,7 @@ export default function AddListingScreen() {
       const result = await createListing(payload);
       if (result) {
         setForm(INITIAL);
-        router.back();
+        goBack();
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Failed to create listing.');
@@ -121,7 +144,7 @@ export default function AddListingScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
+        <TouchableOpacity onPress={goBack} style={styles.headerBack}>
           <Text style={styles.headerBackIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Listing</Text>
@@ -184,6 +207,22 @@ export default function AddListingScreen() {
             <TextInput style={styles.input} placeholder="e.g. Poblacion"
               placeholderTextColor={TEXT_LIGHT} value={form.barangay}
               onChangeText={v => set('barangay', v)} />
+          </Field>
+
+          <Field label="Pick Location" error={errors.latitude || errors.longitude} required>
+            <TouchableOpacity
+              style={styles.locationButton}
+              onPress={() => setShowLocationPicker(true)}
+            >
+              <Text style={styles.locationLabel}>
+                {Number.isFinite(Number(form.latitude)) && Number.isFinite(Number(form.longitude))
+                  ? `📍 ${Number(form.latitude).toFixed(4)}, ${Number(form.longitude).toFixed(4)}`
+                  : 'Choose location on the map'}
+              </Text>
+              <Text style={styles.locationHint} numberOfLines={2}>
+                {form.barangay || 'Tap to open the location picker'}
+              </Text>
+            </TouchableOpacity>
           </Field>
 
           <SectionHeader title="Listing Details" />
@@ -262,6 +301,24 @@ export default function AddListingScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <Modal visible={showLocationPicker} animationType="slide" presentationStyle="fullScreen">
+        <SafeAreaView style={styles.pickerModalSafe}>
+          <View style={styles.pickerModalHeader}>
+            <Text style={styles.pickerModalTitle}>Choose Location</Text>
+            <TouchableOpacity onPress={() => setShowLocationPicker(false)} style={styles.pickerCloseButton}>
+              <Text style={styles.pickerCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.pickerModalBody}>
+            <LocationPicker
+              onSelect={handleLocationSelect}
+              initialLatitude={Number(form.latitude) || 12.8797}
+              initialLongitude={Number(form.longitude) || 121.7740}
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
+
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.submitBtn, submitting && { opacity: 0.6, backgroundColor: '#888' }]}
@@ -332,6 +389,12 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: DANGER },
   textArea: { height: 100, paddingTop: 12 },
+  locationButton: {
+    backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE',
+    borderRadius: 14, padding: 16,
+  },
+  locationLabel: { fontSize: 14, fontWeight: '700', color: '#1D4ED8' },
+  locationHint: { marginTop: 6, color: '#475569', fontSize: 13 },
   toggleRow: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14,
     borderTopWidth: 1, borderBottomWidth: 1, borderColor: DIVIDER, marginBottom: 4,
@@ -374,4 +437,13 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', elevation: 4,
   },
   submitBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  pickerModalSafe: { flex: 1, backgroundColor: BG },
+  pickerModalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: DIVIDER,
+  },
+  pickerModalTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK },
+  pickerCloseButton: { paddingHorizontal: 12, paddingVertical: 8 },
+  pickerCloseText: { color: PRIMARY, fontSize: 14, fontWeight: '700' },
+  pickerModalBody: { flex: 1 },
 });

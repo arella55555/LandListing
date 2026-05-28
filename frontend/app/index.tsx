@@ -1,6 +1,6 @@
-import CreateListing from '../src/screens/Listings/CreateListing';
+import AddListingScreen from '../src/screens/Listings/AddListingScreen';
 
-export default function App() {  return <CreateListing />;
+export default function App() {  return <AddListingScreen />;
 // app/index.tsx
 // Expo Router uses this as the root route.
 // _layout.tsx defines the Stack — this file just re-exports HomeScreen.

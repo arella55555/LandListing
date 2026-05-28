@@ -4,7 +4,7 @@
  * Uses module-level shared state so ALL screens see the same data.
  * Favorites and new listings persist across navigation.
  *
- * Set USE_MOCK = false when backend is ready.
+ * Backend-backed state only; no hardcoded mock listings.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -16,77 +16,13 @@ import {
   ListingFilters,
 } from '../services/listingService';
 
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ─────────────────────────────────────────────
 // MODULE-LEVEL shared state
 // All hook instances read/write the SAME arrays
 // ─────────────────────────────────────────────
-let _listings: Listing[] = [
-  {
-    id: '1',
-    seller_id: 'seller-1',
-    category_id: 1,
-    title: 'Boogs Lot',
-    description: 'Prime commercial lot in the heart of Kalibo.',
-    price: 25_000_000,
-    area_sqm: 3000,
-    latitude: 11.7087,
-    longitude: 122.3634,
-    municipality: 'Kalibo',
-    province: 'Aklan',
-    title_status: 'TCT',
-    listing_type: 'sale',
-    status: 'active',
-    negotiable: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    primary_image_url: 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80',
-    is_favorited: false,
-  },
-  {
-    id: '2',
-    seller_id: 'seller-2',
-    category_id: 1,
-    title: 'Lupain ni Cheyt',
-    description: 'Agricultural lot perfect for farming and leisure.',
-    price: 3_200_000,
-    area_sqm: 8000,
-    latitude: 11.8423,
-    longitude: 122.1045,
-    municipality: 'Nabas',
-    province: 'Aklan',
-    title_status: 'tax_dec',
-    listing_type: 'sale',
-    status: 'active',
-    negotiable: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    primary_image_url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80',
-    is_favorited: false,
-  },
-  {
-    id: '3',
-    seller_id: 'seller-1',
-    category_id: 5,
-    title: 'Batan Farm Lot',
-    description: 'Coconut land near the coast, ideal for agri-tourism.',
-    price: 1_500_000,
-    area_sqm: 5000,
-    latitude: 11.5973,
-    longitude: 122.4889,
-    municipality: 'Batan',
-    province: 'Aklan',
-    title_status: 'OCT',
-    listing_type: 'sale',
-    status: 'active',
-    negotiable: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    primary_image_url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80',
-    is_favorited: false,
-  },
-];
+let _listings: Listing[] = [];
 
 // Listeners — every mounted hook re-renders when data changes
 type Listener = () => void;
@@ -117,7 +53,6 @@ export function useListings(filters?: ListingFilters) {
   }, []);
 
   const fetchListings = useCallback(async () => {
-    if (USE_MOCK) return; // mock data is already loaded
     setLoading(true);
     setError(null);
     try {
@@ -149,21 +84,6 @@ export function useListings(filters?: ListingFilters) {
   // ── Create ──────────────────────────────────
   const createListing = async (payload: CreateListingPayload): Promise<Listing | null> => {
     try {
-      if (USE_MOCK) {
-        const newListing: Listing = {
-          ...payload,
-          id: Date.now().toString(),
-          seller_id: 'seller-1',
-          status: 'active',
-          negotiable: payload.negotiable ?? true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          primary_image_url: payload.image_urls?.[0],
-          is_favorited: false,
-        };
-        setListings(prev => [newListing, ...prev]);
-        return newListing;
-      }
       const created = await listingService.create(payload);
       setListings(prev => [created, ...prev]);
       return created;
@@ -179,17 +99,6 @@ export function useListings(filters?: ListingFilters) {
     payload: UpdateListingPayload
   ): Promise<Listing | null> => {
     try {
-      if (USE_MOCK) {
-        let updated: Listing | null = null;
-        setListings(prev =>
-          prev.map(l => {
-            if (l.id !== id) return l;
-            updated = { ...l, ...payload, updated_at: new Date().toISOString() };
-            return updated!;
-          })
-        );
-        return updated;
-      }
       const updatedFromApi = await listingService.update(id, payload);
       setListings(prev => prev.map(l => (l.id === id ? updatedFromApi : l)));
       return updatedFromApi;
@@ -202,7 +111,7 @@ export function useListings(filters?: ListingFilters) {
   // ── Delete ──────────────────────────────────
   const deleteListing = async (id: string): Promise<boolean> => {
     try {
-      if (!USE_MOCK) await listingService.remove(id);
+      await listingService.remove(id);
       setListings(prev => prev.filter(l => l.id !== id));
       return true;
     } catch (err: any) {
@@ -217,17 +126,15 @@ export function useListings(filters?: ListingFilters) {
     setListings(prev =>
       prev.map(l => l.id === id ? { ...l, is_favorited: !l.is_favorited } : l)
     );
-    if (!USE_MOCK) {
-      const listing = _listings.find(l => l.id === id);
-      if (listing) {
-        try {
-          await listingService.toggleFavorite(listing);
-        } catch {
-          // Rollback on error
-          setListings(prev =>
-            prev.map(l => l.id === id ? { ...l, is_favorited: !l.is_favorited } : l)
-          );
-        }
+    const listing = _listings.find(l => l.id === id);
+    if (listing) {
+      try {
+        await listingService.toggleFavorite(listing);
+      } catch {
+        // Rollback on error
+        setListings(prev =>
+          prev.map(l => l.id === id ? { ...l, is_favorited: !l.is_favorited } : l)
+        );
       }
     }
   };
@@ -259,7 +166,6 @@ export function useMyListings() {
   }, []);
 
   const fetchMyListings = useCallback(async () => {
-    if (USE_MOCK) return;
     setLoading(true);
     setError(null);
     try {
@@ -322,7 +228,6 @@ export function useFavorites() {
   }, []);
 
   const fetchFavorites = useCallback(async () => {
-    if (USE_MOCK) return;
     setLoading(true);
     setError(null);
     try {
