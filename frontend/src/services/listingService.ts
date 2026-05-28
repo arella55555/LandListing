@@ -88,6 +88,13 @@ export interface ListingFilters {
 function normalize(listing: any): Listing {
   return {
     ...listing,
+    id: String(listing.id),
+    seller_id: String(listing.seller_id),
+    category_id: Number(listing.category_id),
+    price: Number(listing.price),
+    area_sqm: Number(listing.area_sqm),
+    latitude: Number(listing.latitude),
+    longitude: Number(listing.longitude),
     is_favorited: listing.is_saved ?? listing.is_favorited ?? false,
   };
 }

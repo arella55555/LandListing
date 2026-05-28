@@ -77,6 +77,9 @@ export default function ListingDetailScreen() {
     listing?.images?.map(i => i.image_url) ??
     (listing?.primary_image_url ? [listing.primary_image_url] : []);
 
+  const latitude = Number(listing?.latitude);
+  const longitude = Number(listing?.longitude);
+
   const handleFavorite = async () => {
     if (!listing) return;
     const newVal = !listing.is_favorited;
@@ -181,12 +184,12 @@ export default function ListingDetailScreen() {
             </View>
           </View>
 
-          {Number.isFinite(listing.latitude) && Number.isFinite(listing.longitude) && (
+          {Number.isFinite(latitude) && Number.isFinite(longitude) && (
             <View style={styles.mapSection}>
               <Text style={styles.sectionLabel}>Location</Text>
               <ListingMap
-                latitude={listing.latitude}
-                longitude={listing.longitude}
+                latitude={latitude}
+                longitude={longitude}
                 title={listing.title}
                 height={280}
               />
