@@ -25,6 +25,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
 }) => {
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(14);
+  const [satelliteMode, setSatelliteMode] = useState(false);
 
   const delta = 0.02 / Math.pow(2, zoomLevel - 14);
 
@@ -46,6 +47,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
     <MapView
       style={styles.map}
       provider={PROVIDER_DEFAULT}
+      mapType={satelliteMode ? 'satellite' : 'standard'}
       initialRegion={{
         latitude,
         longitude,
@@ -67,6 +69,13 @@ const ListingMap: React.FC<ListingMapProps> = ({
     <View style={[styles.container, { height }]}> 
       {renderMap()}
       <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={styles.textButton}
+          onPress={() => setSatelliteMode((current) => !current)}
+        >
+          <MaterialIcons name={satelliteMode ? 'map' : 'satellite'} size={18} color="#007AFF" />
+          <Text style={styles.buttonLabel}>{satelliteMode ? 'Standard' : 'Satellite'}</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.iconButton} onPress={() => changeZoom('in')}>
           <MaterialIcons name="add" size={20} color="#007AFF" />
         </TouchableOpacity>
@@ -89,6 +98,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
           <MapView
             style={styles.fullscreenMap}
             provider={PROVIDER_DEFAULT}
+            mapType={satelliteMode ? 'satellite' : 'standard'}
             initialRegion={{
               latitude,
               longitude,

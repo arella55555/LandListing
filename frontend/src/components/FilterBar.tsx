@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export type HomeFilterState = {
-  propertyType: 'all' | 'land' | 'single-family' | 'townhome' | 'farm';
+  propertyType: 'all' | 'agricultural' | 'residential' | 'commercial' | 'industrial' | 'farm-lot';
   priceRange: 'all' | 'under-300k' | '300k-600k' | '600k-plus';
 };
 
@@ -14,10 +14,11 @@ interface FilterBarProps {
 
 const propertyOptions: HomeFilterState['propertyType'][] = [
   'all',
-  'land',
-  'single-family',
-  'townhome',
-  'farm',
+  'agricultural',
+  'residential',
+  'commercial',
+  'industrial',
+  'farm-lot',
 ];
 
 const priceOptions: HomeFilterState['priceRange'][] = [
@@ -29,7 +30,8 @@ const priceOptions: HomeFilterState['priceRange'][] = [
 
 const formatPropertyLabel = (value: HomeFilterState['propertyType']) => {
   if (value === 'all') return 'All types';
-  return value.replace('-', ' ');
+  if (value === 'farm-lot') return 'Farm Lot';
+  return `${value[0].toUpperCase()}${value.slice(1)}`;
 };
 
 const pesoFormatter = new Intl.NumberFormat('en-PH', {

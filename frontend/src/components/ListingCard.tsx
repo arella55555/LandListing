@@ -7,8 +7,9 @@ export interface ListingPreview {
   price: number;
   image: string;
   location: string;
-  beds: number;
-  baths: number;
+  areaSqm: number;
+  listingType: string;
+  titleStatus: string;
 }
 
 interface ListingCardProps {
@@ -61,8 +62,9 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, onPress }) => {
         </Text>
 
         <View style={styles.detailsRow}>
-          <Text style={styles.detailPill}>{listing.beds} beds</Text>
-          <Text style={styles.detailPill}>{listing.baths} baths</Text>
+          <Text style={styles.detailPill}>{listing.areaSqm.toLocaleString('en-PH')} sqm</Text>
+          <Text style={styles.detailPill}>{listing.listingType}</Text>
+          <Text style={styles.detailPill}>{listing.titleStatus}</Text>
         </View>
       </View>
     </Pressable>

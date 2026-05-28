@@ -1,238 +1,268 @@
-/**
- * HomeScreen.tsx  –  lupa.ph
- * Uses shared useListings() hook so favorites persist across screens.
- */
-
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, Image, SafeAreaView, StatusBar,
-  ScrollView, Platform,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import FilterBar, { HomeFilterState } from '../../components/FilterBar';
+import ListingCard, { ListingPreview } from '../../components/ListingCard';
 import { useListings } from '../../hooks/useListings';
 import { Listing } from '../../services/listingService';
 
-const PRIMARY       = '#27AE60';
-const PRIMARY_LIGHT = '#E8F8EF';
-const TEXT_DARK     = '#111827';
-const TEXT_MED      = '#6B7280';
-const TEXT_LIGHT    = '#9CA3AF';
-const BG            = '#FFFFFF';
-const INPUT_BG      = '#F3F4F6';
-const FILTERS       = ['Price', 'Location', 'Size'];
+const fallbackImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+const UNDER_PHP_THRESHOLD = 300_000;
+const OVER_PHP_THRESHOLD = 600_000;
+const CATEGORY_IDS: Record<Exclude<HomeFilterState['propertyType'], 'all'>, number> = {
+  agricultural: 1,
+  residential: 2,
+  commercial: 3,
+  industrial: 4,
+  'farm-lot': 5,
+};
 
-const formatPrice = (p: number) => '₱' + p.toLocaleString('en-PH');
-const formatArea  = (a: number) => a.toLocaleString('en-PH') + ' sqm';
+const formatLocation = (listing: Listing) =>
+  [listing.barangay, listing.municipality, listing.province].filter(Boolean).join(', ') || 'Unknown location';
 
-export default function HomeScreen() {
+
+const toPreview = (listing: Listing): ListingPreview => ({
+  id: listing.id,
+  title: listing.title,
+  price: listing.price,
+  image: listing.primary_image_url ?? listing.images?.[0]?.image_url ?? fallbackImage,
+  location: formatLocation(listing),
+  areaSqm: listing.area_sqm,
+  listingType:
+    listing.listing_type === 'sale'
+      ? 'For Sale'
+      : listing.listing_type === 'rent'
+        ? 'For Rent'
+        : 'For Lease',
+  titleStatus: listing.title_status.toUpperCase(),
+});
+
+const matchesPropertyType = (listing: Listing, propertyType: HomeFilterState['propertyType']) => {
+  if (propertyType === 'all') return true;
+  return listing.category_id === CATEGORY_IDS[propertyType];
+};
+
+const HomeScreen: React.FC = () => {
   const router = useRouter();
-  const [search, setSearch]             = useState('');
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-
-  const { listings, toggleFavorite } = useListings();
-
-  // Filter locally by search
-  const filtered = listings.filter(l => {
-    const q = search.toLowerCase();
-    return (
-      l.title.toLowerCase().includes(q) ||
-      l.municipality?.toLowerCase().includes(q) ||
-      l.province?.toLowerCase().includes(q)
-    );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilters, setActiveFilters] = useState<HomeFilterState>({
+    propertyType: 'all',
+    priceRange: 'all',
   });
 
-  const renderCard = ({ item }: { item: Listing }) => {
-    const imgUri = item.primary_image_url ?? item.images?.[0]?.image_url ?? (item as any).image_url;
+  const { listings, loading, error, refetch } = useListings();
+  const { width } = useWindowDimensions();
 
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.88}
-        onPress={() =>
-          router.push({
-            pathname: '/listing/[id]' as any,
-            params: { id: item.id, data: JSON.stringify(item) },
-          })
-        }
-      >
-        <View style={styles.cardImageWrapper}>
-          {imgUri ? (
-            <Image source={{ uri: imgUri }} style={styles.cardImage} resizeMode="cover" />
-          ) : (
-            <View style={[styles.cardImage, styles.imagePlaceholder]}>
-              <Text style={{ fontSize: 32 }}>🏞</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            style={styles.heartBtn}
-            onPress={() => toggleFavorite(item.id)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.heartIcon}>{item.is_favorited ? '♥' : '♡'}</Text>
-          </TouchableOpacity>
-        </View>
+  const columns = width >= 1024 ? 4 : width >= 768 ? 3 : width >= 640 ? 2 : 1;
 
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <View style={styles.cardMeta}>
-            <Text style={styles.cardLocation}>⊙ {item.municipality}, {item.province}</Text>
-          </View>
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
-            <Text style={styles.cardArea}>{formatArea(item.area_sqm)}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+  const previewListings = useMemo(() => listings.map(toPreview), [listings]);
+
+  const filteredListings = useMemo(() => {
+    return listings
+      .filter((listing) => {
+        const search = searchQuery.toLowerCase();
+        const location = formatLocation(listing).toLowerCase();
+        const matchesSearch = `${listing.title} ${location}`.toLowerCase().includes(search);
+        const matchesType = matchesPropertyType(listing, activeFilters.propertyType);
+        const matchesPrice =
+          activeFilters.priceRange === 'all' ||
+          (activeFilters.priceRange === 'under-300k' && listing.price < UNDER_PHP_THRESHOLD) ||
+          (activeFilters.priceRange === '300k-600k' && listing.price >= UNDER_PHP_THRESHOLD && listing.price <= OVER_PHP_THRESHOLD) ||
+          (activeFilters.priceRange === '600k-plus' && listing.price > OVER_PHP_THRESHOLD);
+
+        return matchesSearch && matchesType && matchesPrice;
+      })
+      .map(toPreview);
+  }, [activeFilters, listings, searchQuery]);
+
+  const handleListingPress = (listing: ListingPreview) => {
+    const source = listings.find((item) => item.id === listing.id);
+    if (!source) {
+      Alert.alert('Listing not found', 'This listing is no longer available.');
+      return;
+    }
+
+    router.push({
+      pathname: '/listing/[id]' as any,
+      params: { id: source.id, data: JSON.stringify(source) },
+    });
   };
 
+  if (loading && previewListings.length === 0) {
+    return (
+      <View style={styles.centerState}>
+        <ActivityIndicator size="large" color="#0F766E" />
+        <Text style={styles.stateText}>Loading listings...</Text>
+      </View>
+    );
+  }
+
+  if (error && previewListings.length === 0) {
+    return (
+      <View style={styles.centerState}>
+        <Text style={styles.stateTitle}>Could not load listings</Text>
+        <Text style={styles.stateText}>{error}</Text>
+        <Pressable style={styles.retryButton} onPress={refetch}>
+          <Text style={styles.retryText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
-
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lupa ph sampleg</Text>
-      </View>
-
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Text style={styles.searchMagnifier}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search land listings..."
-            placeholderTextColor={TEXT_LIGHT}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-        </View>
-      </View>
-
-      <ScrollView
-        horizontal showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll} contentContainerStyle={styles.filterContent}
-      >
-        {FILTERS.map(f => {
-          const active = activeFilter === f;
-          return (
-            <TouchableOpacity
-              key={f}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setActiveFilter(active ? null : f)}
-              activeOpacity={0.75}
-            >
-              {f === 'Price' && (
-                <Text style={[styles.chipIcon, active && styles.chipIconActive]}>⊟ </Text>
-              )}
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
+    <View style={styles.screen}>
       <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={renderCard}
+        key={`home-grid-${columns}`}
+        data={filteredListings}
+        keyExtractor={(item) => item.id}
+        numColumns={columns}
         contentContainerStyle={styles.listContent}
+        columnWrapperStyle={columns > 1 ? styles.columnWrapper : undefined}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No listings found.</Text>
+        ListHeaderComponent={
+          <View style={styles.heroSection}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.eyebrow}>Buyer dashboard</Text>
+              <Text style={styles.title}>Discover land and homes that fit your next move.</Text>
+              <Text style={styles.description}>
+                Browse listings straight from the database, refine results with fast filters, and open any card for the live detail screen.
+              </Text>
+            </View>
+
+            <View style={styles.filterCard}>
+              <FilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onFilterChange={setActiveFilters}
+              />
+            </View>
           </View>
         }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No listings found</Text>
+            <Text style={styles.emptyText}>
+              Try broadening your search or adjusting the price and property filters.
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={[styles.cardWrapper, { width: `${100 / columns}%` }]}>
+            <ListingCard listing={item} onPress={handleListingPress} />
+          </View>
+        )}
       />
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/listing/add' as any)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabIcon}>＋</Text>
-      </TouchableOpacity>
-
-      <View style={styles.tabBar}>
-        <TabItem icon="⌂" label="Home" active />
-        <TabItem icon="♡" label="Favorites" onPress={() => router.push('/favorites' as any)} />
-        <TabItem icon="≡" label="My Listings" onPress={() => router.push('/my-listings' as any)} />
-        <TabItem icon="👤" label="Profile" onPress={() => router.push('/profile' as any)} />
-      </View>
-    </SafeAreaView>
+    </View>
   );
-}
-
-function TabItem({ icon, label, active = false, onPress }: {
-  icon: string; label: string; active?: boolean; onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.tabIcon, active && styles.tabIconActive]}>{icon}</Text>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
+};
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
-  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'android' ? 16 : 8, paddingBottom: 12 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.5 },
-  searchRow: { paddingHorizontal: 16, paddingBottom: 10 },
-  searchBox: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: INPUT_BG, borderRadius: 12, paddingHorizontal: 14, height: 46,
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  searchMagnifier: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 15, color: TEXT_DARK, paddingVertical: 0 },
-  filterScroll: { flexGrow: 0, marginBottom: 8 },
-  filterContent: { paddingHorizontal: 16, gap: 8 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB',
-    borderRadius: 24, paddingHorizontal: 14, paddingVertical: 7, marginRight: 8, backgroundColor: BG,
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  chipActive: { borderColor: PRIMARY, backgroundColor: PRIMARY_LIGHT },
-  chipIcon: { fontSize: 13, color: TEXT_MED },
-  chipIconActive: { color: PRIMARY },
-  chipText: { fontSize: 14, fontWeight: '500', color: TEXT_DARK },
-  chipTextActive: { color: PRIMARY, fontWeight: '600' },
-  listContent: { paddingHorizontal: 16, paddingBottom: 100, gap: 16 },
-  empty: { marginTop: 60, alignItems: 'center' },
-  emptyText: { fontSize: 15, color: TEXT_LIGHT },
-  card: {
-    backgroundColor: BG, borderRadius: 14, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#F3F4F6',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
+  heroSection: {
+    marginBottom: 18,
+    gap: 16,
   },
-  cardImageWrapper: { position: 'relative' },
-  cardImage: { width: '100%', height: 190, backgroundColor: '#E5E7EB' },
-  imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  heartBtn: {
-    position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', elevation: 2,
+  heroCopy: {
+    paddingTop: 8,
   },
-  heartIcon: { fontSize: 18, color: '#EF4444', lineHeight: 20 },
-  cardBody: { padding: 14, gap: 4 },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center' },
-  cardLocation: { fontSize: 13, color: TEXT_MED },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
-  cardPrice: { fontSize: 16, fontWeight: '700', color: TEXT_DARK },
-  cardArea: { fontSize: 13, color: TEXT_MED },
-  fab: {
-    position: 'absolute', bottom: 72, right: 20, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', elevation: 6,
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F766E',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
   },
-  fabIcon: { fontSize: 28, color: '#FFFFFF', lineHeight: 32 },
-  tabBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: BG,
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 6, paddingTop: 8, elevation: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#0F172A',
+    lineHeight: 34,
+    marginBottom: 10,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  tabIcon: { fontSize: 20, color: TEXT_LIGHT },
-  tabIconActive: { color: TEXT_DARK },
-  tabLabel: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '400' },
-  tabLabelActive: { color: TEXT_DARK, fontWeight: '600' },
+  description: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#475569',
+  },
+  filterCard: {
+    marginTop: 4,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    paddingHorizontal: 6,
+    paddingBottom: 16,
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  centerState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#F8FAFC',
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  stateText: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#0F766E',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
 });
+
+export default HomeScreen;
