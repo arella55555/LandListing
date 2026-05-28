@@ -1,203 +1,113 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import baseURL from "./api";
 
-async function getAuthHeaders() {
+/* ================================
+   CORE FETCH WRAPPER (IMPORTANT)
+================================ */
+async function apiRequest(
+  url: string,
+  options: RequestInit = {}
+) {
+  const token = await AsyncStorage.getItem("token");
 
-  const token =
-    await AsyncStorage.getItem("token");
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-export const getUsers = async () => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/users`,
-    {
-      headers,
-    }
-  );
-
-  if (!res.ok) {
-
-    const errorData =
-      await res.json();
-
-    throw new Error(
-      errorData.message ||
-      "Failed to fetch users"
-    );
+  if (!token) {
+    throw new Error("No auth token found");
   }
 
-  return await res.json();
-};
+  const res = await fetch(`${baseURL}${url}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
 
-export const approveSeller =
-  async (userId: string) => {
+  let data: any = null;
 
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/users/${userId}/approve-seller`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  return await res.json();
-};
-
-export const rejectSeller =
-  async (userId: string) => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/users/${userId}/reject-seller`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  return await res.json();
-};
-
-export const suspendUser =
-  async (userId: string) => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/users/${userId}/suspend`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  const data = await res.json();
+  try {
+    data = await res.json();
+  } catch (e) {
+    // ignore json parse errors
+  }
 
   if (!res.ok) {
     throw new Error(
-      data.message ||
-      "Failed to suspend user"
+      data?.message || `Request failed: ${res.status}`
     );
   }
 
   return data;
+}
+
+/* ================================
+   USERS
+================================ */
+
+export const getUsers = async () => {
+  return apiRequest("/admin/users");
 };
 
-export const unsuspendUser =
-  async (userId: string) => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/users/${userId}/unsuspend`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  return await res.json();
+export const approveSeller = async (userId: string) => {
+  return apiRequest(`/admin/users/${userId}/approve-seller`, {
+    method: "PATCH",
+  });
 };
+
+export const rejectSeller = async (userId: string) => {
+  return apiRequest(`/admin/users/${userId}/reject-seller`, {
+    method: "PATCH",
+  });
+};
+
+export const suspendUser = async (userId: string) => {
+  return apiRequest(`/admin/users/${userId}/suspend`, {
+    method: "PATCH",
+  });
+};
+
+export const unsuspendUser = async (userId: string) => {
+  return apiRequest(`/admin/users/${userId}/unsuspend`, {
+    method: "PATCH",
+  });
+};
+
+/* ================================
+   LISTINGS (FIXED + CLEAN)
+================================ */
 
 export const getListings = async () => {
+  const res = await apiRequest("/admin/listings");
 
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/listings`,
-    {
-      headers,
-    }
-  );
-
-  if (!res.ok) {
-
-    const errorData =
-      await res.json();
-
-    throw new Error(
-      errorData.message ||
-      "Failed to fetch listings"
-    );
-  }
-
-  return await res.json();
+  // normalize backend response safely
+  return {
+    listings: res?.listings || [],
+  };
 };
 
-export const approveListing =
-  async (listingId: string) => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/listings/${listingId}/approve`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  return await res.json();
+export const approveListing = async (listingId: string) => {
+  return apiRequest(`/admin/listings/${listingId}/approve`, {
+    method: "PATCH",
+  });
 };
 
-export const rejectListing =
-  async (listingId: string) => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/listings/${listingId}/reject`,
-    {
-      method: "PATCH",
-      headers,
-    }
-  );
-
-  return await res.json();
+export const rejectListing = async (listingId: string) => {
+  return apiRequest(`/admin/listings/${listingId}/reject`, {
+    method: "PATCH",
+  });
 };
+
+export const flagListing = async (listingId: string) => {
+  return apiRequest(`/admin/listings/${listingId}/flag`, {
+    method: "PATCH",
+  });
+};
+
+/* ================================
+   LOGS
+================================ */
 
 export const getLogs = async () => {
-
-  const headers =
-    await getAuthHeaders();
-
-  const res = await fetch(
-    `${baseURL}/admin/logs`,
-    {
-      headers,
-    }
-  );
-
-  if (!res.ok) {
-
-    const errorData =
-      await res.json();
-
-    throw new Error(
-      errorData.message ||
-      "Failed to fetch logs"
-    );
-  }
-
-  return await res.json();
+  return apiRequest("/admin/logs");
 };
+

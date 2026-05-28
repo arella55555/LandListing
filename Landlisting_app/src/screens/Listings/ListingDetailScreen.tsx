@@ -49,8 +49,23 @@ export default function ListingDetailScreen() {
   const [listing, setListing]       = useState<Listing | null>(seedListing);
   const [loading, setLoading]       = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  
 
   const isOwner = listing?.seller_id === MY_SELLER_ID;
+  /*const moderationStatus =
+  listing?.moderation_status || "pending";
+
+  const isPending =
+    moderationStatus === "pending";
+
+  const isRejected =
+    moderationStatus === "rejected";
+
+  const isApproved =
+    moderationStatus === "approved";
+
+  const isFlagged =
+    moderationStatus === "flagged";*/
 
   // Only fetch from API if we have NO seed data
   useEffect(() => {

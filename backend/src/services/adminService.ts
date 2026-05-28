@@ -16,16 +16,15 @@ class AdminService {
     SELECT COUNT(*) FROM listings
   `);
 
-  const pendingListings = await pool.query(`
-    SELECT COUNT(*) FROM listings
-    WHERE status='pending'
-  `);
-
   const approvedListings = await pool.query(`
-    SELECT COUNT(*) FROM listings
-    WHERE status='approved'
-  `);
+  SELECT COUNT(*) FROM listings
+  WHERE moderation_status='approved'
+`);
 
+const pendingListings = await pool.query(`
+  SELECT COUNT(*) FROM listings
+  WHERE moderation_status='pending'
+`);
   const suspendedUsers = await pool.query(`
     SELECT COUNT(*) FROM users
     WHERE is_suspended=true
@@ -168,13 +167,10 @@ static async unsuspendUser(
   // =========================================
 
   static async getListings() {
-
   const result = await pool.query(`
     SELECT
       l.*,
-
       u.full_name AS seller_name,
-
       c.name AS property_type,
 
       (
@@ -187,11 +183,8 @@ static async unsuspendUser(
 
     FROM listings l
 
-    JOIN users u
-      ON u.id = l.seller_id
-
-    JOIN categories c
-      ON c.id = l.category_id
+    JOIN users u ON u.id = l.seller_id
+    JOIN categories c ON c.id = l.category_id
 
     ORDER BY l.created_at DESC
   `);
@@ -199,67 +192,77 @@ static async unsuspendUser(
   return result.rows;
 }
 
+static async flagListing(listingId: string, adminId: string) {
+  await pool.query(`
+    UPDATE listings
+    SET
+      moderation_status = 'flagged',
+      flagged_reason = 'Flagged by admin',
+      updated_at = NOW()
+    WHERE id = $1
+  `, [listingId]);
+
+  await this.logAction(
+    adminId,
+    "flag_listing",
+    "listing",
+    listingId
+  );
+
+  return {
+    message: "Listing flagged"
+  };
+}
+
   // =========================================
   // APPROVE LISTING
   // =========================================
 
-  static async approveListing(
-    listingId: string,
-    adminId: string
-  ) {
+  static async approveListing(listingId: string, adminId: string) {
+  await pool.query(`
+    UPDATE listings
+    SET
+      moderation_status = 'approved',
+      approved_by = $1,
+      approved_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $2
+  `, [adminId, listingId]);
 
-    await pool.query(`
-      UPDATE listings
-      SET
-        status='approved',
-        reviewed_by=$1,
-        reviewed_at=NOW(),
-        updated_at=NOW()
-      WHERE id=$2
-    `, [adminId, listingId]);
+  await this.logAction(
+    adminId,
+    "approve_listing",
+    "listing",
+    listingId
+  );
 
-    await this.logAction(
-      adminId,
-      "approve_listing",
-      "listing",
-      listingId
-    );
-
-    return {
-      message: "Listing approved",
-    };
-  }
+  return { message: "Listing approved" };
+}
 
   // =========================================
   // REJECT LISTING
   // =========================================
 
-  static async rejectListing(
-    listingId: string,
-    adminId: string
-  ) {
+  static async rejectListing(listingId: string, adminId: string) {
+  await pool.query(`
+    UPDATE listings
+    SET
+      moderation_status = 'rejected',
+      rejected_by = $1,
+      rejected_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $2
+  `, [adminId, listingId]);
 
-    await pool.query(`
-      UPDATE listings
-      SET
-        status='rejected',
-        reviewed_by=$1,
-        reviewed_at=NOW(),
-        updated_at=NOW()
-      WHERE id=$2
-    `, [adminId, listingId]);
+  await this.logAction(
+    adminId,
+    "reject_listing",
+    "listing",
+    listingId
+  );
 
-    await this.logAction(
-      adminId,
-      "reject_listing",
-      "listing",
-      listingId
-    );
-
-    return {
-      message: "Listing rejected",
-    };
-  }
+  return { message: "Listing rejected" };
+}
 
   // =========================================
   // SUSPEND USER

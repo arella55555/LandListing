@@ -1,5 +1,6 @@
 /**
- * AddListingScreen.tsx  –  lupa.ph
+ * EditListingScreen.tsx  –  lupa.ph
+ * Uses shared useListings hook for update + delete.
  */
 
 import React, { useState } from 'react';
@@ -8,9 +9,9 @@ import {
   TouchableOpacity, SafeAreaView, StatusBar, Alert,
   ActivityIndicator, Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
-import { CreateListingPayload } from '../../services/listingService';
+import { Listing, UpdateListingPayload } from '../../services/listingService';
 
 const PRIMARY       = '#27AE60';
 const PRIMARY_LIGHT = '#E8F8EF';
@@ -47,19 +48,66 @@ interface FormState {
   negotiable: boolean; image_urls: string[]; imageInput: string;
 }
 
-const INITIAL: FormState = {
-  title: '', description: '', price: '', area_sqm: '', barangay: '',
-  municipality: '', province: '', latitude: '', longitude: '',
-  category_id: 1, listing_type: 'sale', title_status: 'TCT',
+const EMPTY_FORM: FormState = {
+  title: '', description: '', price: '', area_sqm: '',
+  barangay: '', municipality: '', province: '',
+  latitude: '', longitude: '', category_id: 1,
+  listing_type: 'sale', title_status: 'TCT',
   negotiable: true, image_urls: [], imageInput: '',
 };
 
-export default function AddListingScreen() {
+function listingToForm(listing: Listing): FormState {
+  return {
+    title:        listing.title        ?? '',
+    description:  listing.description  ?? '',
+    price:        listing.price        ? String(listing.price) : '',
+    area_sqm:     listing.area_sqm     ? String(listing.area_sqm) : '',
+    barangay:     listing.barangay     ?? '',
+    municipality: listing.municipality ?? '',
+    province:     listing.province     ?? '',
+    latitude:     listing.latitude     ? String(listing.latitude) : '',
+    longitude:    listing.longitude    ? String(listing.longitude) : '',
+    category_id:  listing.category_id  ?? 1,
+    listing_type: listing.listing_type ?? 'sale',
+    title_status: listing.title_status ?? 'TCT',
+    negotiable:   listing.negotiable   ?? true,
+    image_urls:   listing.images?.map(i => i.image_url)
+                  ?? (listing.primary_image_url ? [listing.primary_image_url] : []),
+    imageInput: '',
+  };
+}
+
+export default function EditListingScreen() {
   const router = useRouter();
-  const { createListing } = useListings();
-  const [form, setForm]     = useState<FormState>(INITIAL);
+  const params = useLocalSearchParams<{ data?: string }>();
+  const { updateListing, deleteListing } = useListings();
+
+  const listing: Listing | null = params.data
+    ? (JSON.parse(params.data as string) as Listing)
+    : null;
+
+  // ALL hooks at top — no conditional hooks
+  const [form, setForm]     = useState<FormState>(() => listing ? listingToForm(listing) : EMPTY_FORM);
   const [submitting, setSub]= useState(false);
+  const [deleting, setDel]  = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+
+  if (!listing) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
+            <Text style={styles.headerBackIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Edit Listing</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: TEXT_MED }}>No listing data found.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const set = (key: keyof FormState, value: any) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -87,34 +135,50 @@ export default function AddListingScreen() {
   };
 
   const removeImage = (url: string) =>
-    set('image_urls', form.image_urls.filter(u => u !== url));
+    set('image_urls', form.image_urls.filter((u: string) => u !== url));
 
-  const handleSubmit = async () => {
+  const handleUpdate = async () => {
     if (!validate()) return;
     if (submitting) return;
     setSub(true);
     try {
-      const payload: CreateListingPayload = {
+      const payload: UpdateListingPayload = {
         category_id: form.category_id, title: form.title.trim(),
         description: form.description.trim(), price: Number(form.price),
         area_sqm: Number(form.area_sqm),
-        latitude: Number(form.latitude) || 0,
-        longitude: Number(form.longitude) || 0,
+        latitude: Number(form.latitude) || listing.latitude,
+        longitude: Number(form.longitude) || listing.longitude,
         barangay: form.barangay.trim() || undefined,
         municipality: form.municipality.trim(), province: form.province.trim(),
         title_status: form.title_status, listing_type: form.listing_type,
         negotiable: form.negotiable, image_urls: form.image_urls,
       };
-      const result = await createListing(payload);
-      if (result) {
-        setForm(INITIAL);
-        router.back();
-      }
+      const result = await updateListing(listing.id, payload);
+      if (result) router.back();
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Failed to create listing.');
+      Alert.alert('Error', err?.message ?? 'Failed to update.');
     } finally {
       setSub(false);
     }
+  };
+
+  const handleDelete = () => {
+    Alert.alert('Delete Listing', `Delete "${listing.title}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          setDel(true);
+          const ok = await deleteListing(listing.id);
+          if (ok) {
+            router.back();
+          } else {
+            Alert.alert('Error', 'Failed to delete.');
+            setDel(false);
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -124,7 +188,7 @@ export default function AddListingScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
           <Text style={styles.headerBackIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Listing</Text>
+        <Text style={styles.headerTitle}>Edit Listing</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -134,14 +198,13 @@ export default function AddListingScreen() {
           <SectionHeader title="Basic Information" />
           <Field label="Title" error={errors.title} required>
             <TextInput style={[styles.input, !!errors.title && styles.inputError]}
-              placeholder="e.g. Prime Agricultural Lot in Kalibo"
-              placeholderTextColor={TEXT_LIGHT} value={form.title}
-              onChangeText={v => set('title', v)} />
+              placeholder="Listing title" placeholderTextColor={TEXT_LIGHT}
+              value={form.title} onChangeText={(v: string) => set('title', v)} />
           </Field>
           <Field label="Description" error={errors.description} required>
             <TextInput style={[styles.input, styles.textArea, !!errors.description && styles.inputError]}
-              placeholder="Describe the land..." placeholderTextColor={TEXT_LIGHT}
-              value={form.description} onChangeText={v => set('description', v)}
+              placeholder="Describe the property..." placeholderTextColor={TEXT_LIGHT}
+              value={form.description} onChangeText={(v: string) => set('description', v)}
               multiline numberOfLines={4} textAlignVertical="top" />
           </Field>
 
@@ -149,13 +212,13 @@ export default function AddListingScreen() {
           <Field label="Price (₱)" error={errors.price} required>
             <TextInput style={[styles.input, !!errors.price && styles.inputError]}
               placeholder="e.g. 2500000" placeholderTextColor={TEXT_LIGHT}
-              value={form.price} onChangeText={v => set('price', v.replace(/[^0-9.]/g, ''))}
+              value={form.price} onChangeText={(v: string) => set('price', v.replace(/[^0-9.]/g, ''))}
               keyboardType="numeric" />
           </Field>
           <Field label="Land Size (sqm)" error={errors.area_sqm} required>
             <TextInput style={[styles.input, !!errors.area_sqm && styles.inputError]}
               placeholder="e.g. 2500" placeholderTextColor={TEXT_LIGHT}
-              value={form.area_sqm} onChangeText={v => set('area_sqm', v.replace(/[^0-9.]/g, ''))}
+              value={form.area_sqm} onChangeText={(v: string) => set('area_sqm', v.replace(/[^0-9.]/g, ''))}
               keyboardType="numeric" />
           </Field>
           <View style={styles.toggleRow}>
@@ -173,17 +236,17 @@ export default function AddListingScreen() {
           <Field label="Province" error={errors.province} required>
             <TextInput style={[styles.input, !!errors.province && styles.inputError]}
               placeholder="e.g. Aklan" placeholderTextColor={TEXT_LIGHT}
-              value={form.province} onChangeText={v => set('province', v)} />
+              value={form.province} onChangeText={(v: string) => set('province', v)} />
           </Field>
           <Field label="Municipality / City" error={errors.municipality} required>
             <TextInput style={[styles.input, !!errors.municipality && styles.inputError]}
               placeholder="e.g. Kalibo" placeholderTextColor={TEXT_LIGHT}
-              value={form.municipality} onChangeText={v => set('municipality', v)} />
+              value={form.municipality} onChangeText={(v: string) => set('municipality', v)} />
           </Field>
           <Field label="Barangay">
             <TextInput style={styles.input} placeholder="e.g. Poblacion"
               placeholderTextColor={TEXT_LIGHT} value={form.barangay}
-              onChangeText={v => set('barangay', v)} />
+              onChangeText={(v: string) => set('barangay', v)} />
           </Field>
 
           <SectionHeader title="Listing Details" />
@@ -233,7 +296,7 @@ export default function AddListingScreen() {
           {form.image_urls.length > 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20 }}>
-                {form.image_urls.map((url, i) => (
+                {form.image_urls.map((url: string, i: number) => (
                   <View key={i} style={styles.thumbWrapper}>
                     <Image source={{ uri: url }} style={styles.thumb} resizeMode="cover" />
                     {i === 0 && (
@@ -251,8 +314,8 @@ export default function AddListingScreen() {
           )}
           <View style={styles.imgInputRow}>
             <TextInput style={[styles.input, styles.imgInput]}
-              placeholder="Paste image URL to add" placeholderTextColor={TEXT_LIGHT}
-              value={form.imageInput} onChangeText={v => set('imageInput', v)}
+              placeholder="Paste image URL to add more" placeholderTextColor={TEXT_LIGHT}
+              value={form.imageInput} onChangeText={(v: string) => set('imageInput', v)}
               autoCapitalize="none" returnKeyType="done" onSubmitEditing={addImage} />
             <TouchableOpacity style={styles.addImgBtn} onPress={addImage}>
               <Text style={styles.addImgBtnText}>↑ Add</Text>
@@ -264,17 +327,25 @@ export default function AddListingScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.submitBtn, submitting && { opacity: 0.6, backgroundColor: '#888' }]}
-          onPress={handleSubmit} disabled={submitting}
+          style={[styles.updateBtn, submitting && { opacity: 0.6, backgroundColor: '#888' }]}
+          onPress={handleUpdate} disabled={submitting || deleting}
         >
           {submitting ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <ActivityIndicator color="#FFF" />
-              <Text style={styles.submitBtnText}>Creating...</Text>
+              <Text style={styles.updateBtnText}>Updating...</Text>
             </View>
           ) : (
-            <Text style={styles.submitBtnText}>Create Listing</Text>
+            <Text style={styles.updateBtnText}>Update Listing</Text>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+          onPress={handleDelete} disabled={submitting || deleting}
+        >
+          {deleting
+            ? <ActivityIndicator color="#FFF" size="small" />
+            : <Text style={styles.deleteBtnText}>🗑</Text>}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -365,13 +436,18 @@ const styles = StyleSheet.create({
   },
   addImgBtnText: { fontSize: 13, fontWeight: '600', color: TEXT_DARK },
   footer: {
-    paddingHorizontal: 20, paddingTop: 12,
+    flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 30 : 16,
     borderTopWidth: 1, borderTopColor: DIVIDER, backgroundColor: BG,
   },
-  submitBtn: {
-    backgroundColor: PRIMARY, borderRadius: 14, height: 52,
+  updateBtn: {
+    flex: 1, height: 52, borderRadius: 14, backgroundColor: PRIMARY,
     alignItems: 'center', justifyContent: 'center', elevation: 4,
   },
-  submitBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  updateBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  deleteBtn: {
+    width: 52, height: 52, borderRadius: 14, backgroundColor: DANGER,
+    alignItems: 'center', justifyContent: 'center', elevation: 3,
+  },
+  deleteBtnText: { fontSize: 20 },
 });

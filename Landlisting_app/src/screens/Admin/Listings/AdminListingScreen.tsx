@@ -194,7 +194,10 @@ export default function ListingsScreen() {
                   <Text style={styles.rejectText}>Reject</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.flagButton}>
+                <TouchableOpacity
+  style={styles.flagButton}
+  onPress={() => handleFlag(item.id)}
+>
                   <Text style={styles.flagText}>Flag</Text>
                 </TouchableOpacity>
               </View>

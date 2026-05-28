@@ -12,9 +12,7 @@ import {
   useNavigation,
 } from "@react-navigation/native";
 
-import {
-  Ionicons,
-} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import {
   approveSeller,
@@ -26,15 +24,30 @@ import {
 export default function UserDetailsScreen() {
 
   const route = useRoute<any>();
-
-  const navigation =
-    useNavigation<any>();
+  const navigation = useNavigation<any>();
 
   const {
     user,
     reviewMode,
     onUserUpdated,
   } = route.params;
+
+  /* =========================================================
+     SELLER STATUS
+  ========================================================= */
+
+  const isSellerCandidate =
+  user.seller_verification_status !== null;
+
+const isPendingSeller =
+  user.seller_verification_status === "pending";
+
+  const hasSellerRequest =
+    !!user.seller_verification_status;
+
+  /* =========================================================
+     ACTIONS
+  ========================================================= */
 
   async function handleApprove() {
 
@@ -48,6 +61,7 @@ export default function UserDetailsScreen() {
       );
 
       onUserUpdated?.();
+
       navigation.goBack();
 
     } catch {
@@ -67,10 +81,11 @@ export default function UserDetailsScreen() {
 
       Alert.alert(
         "Rejected",
-        "Seller rejected"
+        "Seller request rejected"
       );
 
       onUserUpdated?.();
+
       navigation.goBack();
 
     } catch {
@@ -94,6 +109,7 @@ export default function UserDetailsScreen() {
       );
 
       onUserUpdated?.();
+
       navigation.goBack();
 
     } catch {
@@ -117,6 +133,7 @@ export default function UserDetailsScreen() {
       );
 
       onUserUpdated?.();
+
       navigation.goBack();
 
     } catch {
@@ -128,6 +145,10 @@ export default function UserDetailsScreen() {
     }
   }
 
+  /* =========================================================
+     UI
+  ========================================================= */
+
   return (
 
     <ScrollView
@@ -136,6 +157,8 @@ export default function UserDetailsScreen() {
         paddingBottom: 120,
       }}
     >
+
+      {/* HERO */}
 
       <View style={styles.hero}>
 
@@ -167,21 +190,24 @@ export default function UserDetailsScreen() {
 
       </View>
 
+      {/* ACCOUNT OVERVIEW */}
+
       <View style={styles.section}>
 
         <Text style={styles.sectionTitle}>
           Account Overview
         </Text>
 
+        {user.seller_verification_status && (
+
         <InfoRow
           icon="shield-checkmark-outline"
-          label="Verification"
+          label="Seller Verification"
           value={
-            user.is_verified
-              ? "Verified"
-              : "Unverified"
+            user.seller_verification_status
           }
         />
+      )}
 
         <InfoRow
           icon="warning-outline"
@@ -199,32 +225,26 @@ export default function UserDetailsScreen() {
           value={user.role}
         />
 
-        {user.role === "seller" && (
+        {hasSellerRequest && (
 
           <InfoRow
             icon="storefront-outline"
             label="Seller Status"
             value={
-              user
-                .seller_verification_status ||
-              "pending"
+              user.seller_verification_status
             }
           />
         )}
 
       </View>
 
-      {reviewMode &&
-        user.role === "seller" &&
-        user
-          .seller_verification_status ===
-          "pending" && (
+      {/* SELLER VERIFICATION */}
+
+      {user.seller_verification_status === "pending" && user.role === "buyer" && (
 
         <View style={styles.section}>
 
-          <Text
-            style={styles.sectionTitle}
-          >
+          <Text style={styles.sectionTitle}>
             Seller Verification
           </Text>
 
@@ -239,9 +259,7 @@ export default function UserDetailsScreen() {
               color="white"
             />
 
-            <Text
-              style={styles.actionText}
-            >
+            <Text style={styles.actionText}>
               Approve Seller
             </Text>
 
@@ -258,9 +276,7 @@ export default function UserDetailsScreen() {
               color="white"
             />
 
-            <Text
-              style={styles.actionText}
-            >
+            <Text style={styles.actionText}>
               Reject Seller
             </Text>
 
@@ -268,6 +284,8 @@ export default function UserDetailsScreen() {
 
         </View>
       )}
+
+      {/* MODERATION */}
 
       <View style={styles.section}>
 
@@ -288,9 +306,7 @@ export default function UserDetailsScreen() {
               color="white"
             />
 
-            <Text
-              style={styles.actionText}
-            >
+            <Text style={styles.actionText}>
               Suspend User
             </Text>
 
@@ -309,9 +325,7 @@ export default function UserDetailsScreen() {
               color="white"
             />
 
-            <Text
-              style={styles.actionText}
-            >
+            <Text style={styles.actionText}>
               Unsuspend User
             </Text>
 
@@ -323,6 +337,10 @@ export default function UserDetailsScreen() {
     </ScrollView>
   );
 }
+
+/* =========================================================
+   INFO ROW
+========================================================= */
 
 function InfoRow({
   icon,
@@ -355,6 +373,10 @@ function InfoRow({
     </View>
   );
 }
+
+/* =========================================================
+   STYLES
+========================================================= */
 
 const styles = StyleSheet.create({
 

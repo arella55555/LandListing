@@ -352,7 +352,25 @@ export default function AdminUsersScreen() {
             }
           >
 
+
             {/* TOP */}
+            {item.role === "buyer" &&
+            item.seller_verification_status === "pending" && (
+
+              <View style={styles.requestBanner}>
+
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={16}
+                  color="#92400E"
+                />
+
+                <Text style={styles.requestBannerText}>
+                  Seller Access Request
+                </Text>
+
+              </View>
+            )}
 
             <View style={styles.topRow}>
 
@@ -835,6 +853,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#0F172A",
+  },
+
+  requestBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+
+  requestBannerText: {
+    marginLeft: 8,
+    color: "#92400E",
+    fontWeight: "700",
+    fontSize: 12,
   },
 
   actions: {

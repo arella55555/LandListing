@@ -203,8 +203,8 @@ export default function AdminUsersScreen() {
           filtered =
             filtered.filter(
               (u) =>
-                u.role ===
-                "seller"
+                u.role === "seller" ||
+                u.seller_verification_status !== null
             );
 
           break;
@@ -317,17 +317,10 @@ export default function AdminUsersScreen() {
           ).length,
 
         pendingSellerRequests:
-          users.filter(
-            (u) =>
-              u.role ===
-                "seller" &&
-
-              (
-                u.seller_verification_status ||
-                "pending"
-              ) ===
-                "pending"
-          ).length,
+        users.filter(
+          (u) =>
+            u.seller_verification_status === "pending"
+        ).length,
       };
 
     }, [users]);
@@ -844,26 +837,36 @@ export default function AdminUsersScreen() {
 
                 </View>
 
-                <View
-                  style={[
-                    styles.badge,
-                    item.is_verified
-                      ? styles.verifiedBadge
-                      : styles.unverifiedBadge,
-                  ]}
-                >
+                {/* SELLER VERIFICATION BADGE */}
 
-                  <Text
-                    style={
-                      styles.badgeText
-                    }
+                {item.seller_verification_status && (
+
+                  <View
+                    style={[
+                      styles.badge,
+
+                      item.seller_verification_status === "approved"
+                        ? styles.verifiedBadge
+                        : item.seller_verification_status === "rejected"
+                        ? styles.rejectedBadge
+                        : styles.pendingBadge,
+                    ]}
                   >
-                    {item.is_verified
-                      ? "Verified"
-                      : "Unverified"}
-                  </Text>
 
-                </View>
+                    <Text style={styles.badgeText}>
+
+                      {item.seller_verification_status === "approved"
+                        ? "Verified Seller"
+
+                        : item.seller_verification_status === "rejected"
+                        ? "Seller Rejected"
+
+                        : "Unverified Seller Request"}
+
+                    </Text>
+
+                  </View>
+                )}
 
                 {item.role ===
                   "seller" && (
@@ -945,10 +948,7 @@ export default function AdminUsersScreen() {
 
                 </TouchableOpacity>
 
-                {item.role ===
-                  "seller" &&
-                  verificationStatus ===
-                    "pending" && (
+                {verificationStatus === "pending" &&  (
 
                   <TouchableOpacity
                     style={
