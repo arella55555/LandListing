@@ -10,3 +10,9 @@ export const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 });
+
+pool.on("error", (err) => {
+  console.error("Database pool error:", err.message);
+});
+
+export default pool;

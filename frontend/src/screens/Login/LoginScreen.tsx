@@ -8,14 +8,19 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import API from "../../services/api";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState<"seller" | "buyer" | "admin" | "">("buyer");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,76 +28,108 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
+    setErrorMessage("");
+
     if (!selectedRole) {
-      Alert.alert("Error", "Please select a role");
+      setErrorMessage("Please select a role.");
       return;
     }
 
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      setErrorMessage("Please fill in all fields.");
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert("Error", "Please enter a valid email");
+      setErrorMessage("Please enter a valid email.");
       return;
     }
 
     setLoading(true);
     try {
-      // API call to login
-      console.log("Login with:", { email, password });
-      // Replace with actual API endpoint
-      // const response = await api.post('/auth/login', { email, password, role: selectedRole });
-      Alert.alert("Success", `Login successful as ${selectedRole}!`);
+      const response = await API.post("/auth/login", {
+        email,
+        password,
+        role: selectedRole,
+      });
+
+      await AsyncStorage.setItem("authToken", response.data.token);
+      await AsyncStorage.setItem("user", JSON.stringify(response.data.user));
+
+      Alert.alert("Success", `Welcome back ${response.data.user.fullName}!`);
       setEmail("");
       setPassword("");
-    } catch (error) {
-      Alert.alert("Error", "Login failed. Please try again.");
+      router.replace("/(tabs)");
+    } catch (error: any) {
+      let message = "Login failed. Please try again.";
+
+      if (error?.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error?.response?.status >= 500) {
+        message = "Server error. Please try again later.";
+      } else if (error?.request) {
+        message = "Unable to reach the server. Check your connection and try again.";
+      }
+
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSignup = async () => {
+    setErrorMessage("");
+
     if (!selectedRole) {
-      Alert.alert("Error", "Please select a role");
+      setErrorMessage("Please select a role.");
       return;
     }
 
     if (!email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
+      setErrorMessage("Please fill in all fields.");
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert("Error", "Please enter a valid email");
+      setErrorMessage("Please enter a valid email.");
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      setErrorMessage("Password must be at least 6 characters.");
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      setErrorMessage("Passwords do not match.");
       return;
     }
 
     setLoading(true);
     try {
-      // API call to signup
-      console.log("Signup with:", { email, password });
-      // Replace with actual API endpoint
-      // const response = await api.post('/auth/signup', { email, password, role: selectedRole });
+      await API.post("/auth/signup", {
+        email,
+        password,
+        role: selectedRole,
+      });
+
       Alert.alert("Success", `Signup successful as ${selectedRole}! Please login.`);
       setIsLogin(true);
       setEmail("");
       setPassword("");
       setConfirmPassword("");
-    } catch (error) {
-      Alert.alert("Error", "Signup failed. Please try again.");
+    } catch (error: any) {
+      let message = "Signup failed. Please try again.";
+
+      if (error?.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error?.response?.status >= 500) {
+        message = "Server error. Please try again later.";
+      } else if (error?.request) {
+        message = "Unable to reach the server. Check your connection and try again.";
+      }
+
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }
@@ -194,6 +231,10 @@ export default function LoginScreen() {
             {loading ? "Loading..." : isLogin ? "Login" : "Sign Up"}
           </Text>
         </TouchableOpacity>
+
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
 
         {/* Forgot Password Link (Login only) */}
         {isLogin && (
@@ -314,6 +355,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     textAlign: "center",
+  },
+  errorText: {
+    color: "#e74c3c",
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 14,
   },
   footer: {
     flexDirection: "row",
