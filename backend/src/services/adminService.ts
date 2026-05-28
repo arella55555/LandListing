@@ -71,21 +71,23 @@ const pendingListings = await pool.query(`
 
   static async getUsers() {
 
-    const result = await pool.query(`
-      SELECT 
-        id,
-        full_name,
-        email,
-        role,
-        is_verified,
-        is_suspended,
-        created_at
-      FROM users
-      ORDER BY created_at DESC
-    `);
+  const result = await pool.query(`
+    SELECT 
+      id,
+      full_name,
+      email,
+      role,
+      is_verified,
+      is_suspended,
+      seller_verification_status,
+      buyer_verification_status,
+      created_at
+    FROM users
+    ORDER BY created_at DESC
+  `);
 
-    return result.rows;
-  }
+  return result.rows;
+}
 
   static async approveSeller(
   userId: string,
@@ -95,6 +97,7 @@ const pendingListings = await pool.query(`
   await pool.query(`
     UPDATE users
     SET
+      role='seller',
       seller_verification_status='approved',
       is_verified=true
     WHERE id=$1
