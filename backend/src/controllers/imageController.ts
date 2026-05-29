@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { uploadBuffer } from '../services/cloudinary';
 
 const verifyListingOwnership = async (listingId: string, userId: string, userRole: string): Promise<boolean> => {
   if (userRole === 'admin') return true;
@@ -111,5 +112,42 @@ export const deleteListingImage = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Image removed from listing successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting listing image", error });
+  }
+};
+
+export const uploadAndSave = async (req: Request, res: Response) => {
+  try {
+    const file = req.file as Express.Multer.File | undefined;
+    const { listing_id, is_primary, sort_order } = req.body;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    if (!file) return res.status(400).json({ message: 'No file uploaded.' });
+
+    // If listing_id provided, verify ownership
+    if (listing_id) {
+      const hasAccess = await verifyListingOwnership(listing_id, userId!, userRole!);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Forbidden. You do not own this listing.' });
+      }
+    }
+
+    const result = await uploadBuffer(file.buffer, file.mimetype);
+    const secureUrl = result.secure_url;
+    const publicId = result.public_id;
+
+    let savedImage = null;
+    if (listing_id) {
+      const insert = await pool.query(
+        `INSERT INTO listing_images (listing_id, image_url, is_primary, sort_order) VALUES ($1, $2, $3, $4) RETURNING *`,
+        [listing_id, secureUrl, is_primary ?? false, sort_order ?? 0]
+      );
+      savedImage = insert.rows[0];
+    }
+
+    res.status(201).json({ message: 'Uploaded', secure_url: secureUrl, public_id: publicId, image: savedImage });
+  } catch (error) {
+    console.error('Upload error', error);
+    res.status(500).json({ message: 'Upload failed', error });
   }
 };

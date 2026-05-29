@@ -63,7 +63,21 @@ export const createListing = async (req: Request, res: Response) => {
       ]
     );
 
-    res.status(201).json({ message: "Listing created successfully", listing: result.rows[0] });
+    const created = result.rows[0];
+
+    // If client provided image_urls (upload-first flow), persist them in listing_images
+    const imageUrls: string[] = req.body.image_urls || [];
+    if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+      const inserts = imageUrls.map((url: string, idx: number) => {
+        return pool.query(
+          `INSERT INTO listing_images (listing_id, image_url, is_primary, sort_order) VALUES ($1, $2, $3, $4)`,
+          [created.id, url, idx === 0, idx]
+        );
+      });
+      await Promise.all(inserts);
+    }
+
+    res.status(201).json({ message: "Listing created successfully", listing: created });
   } catch (error) {
     res.status(500).json({ message: "Error creating listing", error });
   }

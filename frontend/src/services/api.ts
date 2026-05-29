@@ -62,4 +62,14 @@ export const categoryAPI = {
   getAll: () => API.get("/categories"),
 };
 
+// =========================
+// Listing Image Upload API
+// =========================
+export const listingImageAPI = {
+  upload: (formData: FormData) =>
+    API.post('/listing-image/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+};
+
 export default API;

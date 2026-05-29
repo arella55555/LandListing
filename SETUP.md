@@ -67,3 +67,22 @@ paste below and change accordingly
 # Do ipconfig
 Replace YOUR_IP with your ip address in frontend/src/services api.ts
 
+
+# Cloudinary (required for image uploads)
+- Add the following to `backend/.env`:
+  - `CLOUDINARY_CLOUD_NAME=your_cloud_name`
+  - `CLOUDINARY_API_KEY=your_api_key`
+  - `CLOUDINARY_API_SECRET=your_api_secret`
+- Install Cloudinary SDK in backend:
+  ```bash
+  cd backend
+  npm install cloudinary
+  ```
+
+# Frontend image picker
+- Install `expo-image-picker` in frontend:
+  ```bash
+  cd frontend
+  expo install expo-image-picker
+  ```
+
