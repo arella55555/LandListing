@@ -394,38 +394,6 @@ export default function AdminDashboardScreen() {
             <View
               style={styles.headerActions}
             >
-
-              <TouchableOpacity
-                style={
-                  styles.notificationButton
-                }
-                onPress={
-                  goToListingsPending
-                }
-              >
-                <Ionicons
-                  name="notifications-outline"
-                  size={22}
-                  color={TEXT_DARK}
-                />
-
-                {pendingListings > 0 && (
-                  <View
-                    style={
-                      styles.notificationBadge
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.notificationText
-                      }
-                    >
-                      {pendingListings}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
               <Image
                 source={{
                   uri: "https://i.pravatar.cc/100",
