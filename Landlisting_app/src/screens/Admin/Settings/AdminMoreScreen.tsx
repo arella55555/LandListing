@@ -31,7 +31,7 @@ from "@react-native-async-storage/async-storage";
 ========================================================= */
 
 const API_URL =
-  "http://YOUR_IP_ADDRESS:5000/api";
+  "http://10.239.158.186:5000/api";
 
 /* =========================================================
    SCREEN

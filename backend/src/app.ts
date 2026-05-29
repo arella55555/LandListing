@@ -9,6 +9,7 @@ import negotiationRoutes from "./routes/negotiationRoutes";
 import favoriteRoutes from "./routes/favoriteRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 
@@ -29,6 +30,8 @@ app.use(express.json());
  */
 
 app.use("/api", userRoutes);
+
+app.use("/api/auth", authRoutes);
 
 app.use("/api", listingRoutes);
 
