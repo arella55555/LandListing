@@ -69,6 +69,7 @@ export const authAPI = {
   login: (data: { email: string; password: string }) => API.post('/login', data),
   register: (data: { email: string; password: string; full_name?: string; phone?: string; role?: string }) =>
     API.post('/register', data),
+  getUser: (id: string) => API.get(`/users/${id}`),
 };
 
 // =========================

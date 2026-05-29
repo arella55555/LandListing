@@ -15,6 +15,7 @@ import FilterBar, { HomeFilterState } from '../../components/FilterBar';
 import ListingCard, { ListingPreview } from '../../components/ListingCard';
 import { useListings } from '../../hooks/useListings';
 import { Listing } from '../../services/listingService';
+import BuyerTabBar from '../../components/BuyerTabBar';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
 const UNDER_PHP_THRESHOLD = 300_000;
@@ -183,6 +184,7 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
       />
+      <BuyerTabBar active="home" />
     </View>
   );
 };
@@ -219,7 +221,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: 40,
+    paddingBottom: 96,
   },
   heroSection: {
     marginBottom: 18,

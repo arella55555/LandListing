@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFavorites } from '../src/hooks/useListings';
 import { Listing } from '../src/services/listingService';
+import BuyerTabBar from '../src/components/BuyerTabBar';
 
 const PRIMARY    = '#27AE60';
 const TEXT_DARK  = '#111827';
@@ -61,7 +62,7 @@ export default function FavoritesScreen() {
           {/* Remove from favorites button */}
           <TouchableOpacity
             style={styles.heartBtn}
-            onPress={() => removeFavorite(item.id)}
+            onPress={() => removeFavorite((item as any).saved_id ?? item.id)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.heartIcon}>♥</Text>
@@ -132,25 +133,8 @@ export default function FavoritesScreen() {
         />
       )}
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TabItem icon="⌂"  label="Home"        onPress={() => router.push('/' as any)} />
-        <TabItem icon="♥"  label="Favorites"   active />
-        <TabItem icon="≡"  label="My Listings" onPress={() => router.push('/my-listings' as any)} />
-        <TabItem icon="👤" label="Profile"     onPress={() => router.push('/profile' as any)} />
-      </View>
+      <BuyerTabBar active="favorites" />
     </SafeAreaView>
-  );
-}
-
-function TabItem({ icon, label, active = false, onPress }: {
-  icon: string; label: string; active?: boolean; onPress?: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.tabItem} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.tabIcon, active && styles.tabIconActive]}>{icon}</Text>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -210,18 +194,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 10,
   },
   retryText: { color: '#FFF', fontWeight: '700' },
-
-  // Tab bar
-  tabBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    flexDirection: 'row', backgroundColor: BG,
-    borderTopWidth: 1, borderTopColor: DIVIDER,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 6,
-    paddingTop: 8, elevation: 8,
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  tabIcon: { fontSize: 20, color: TEXT_LIGHT },
-  tabIconActive: { color: TEXT_DARK },
-  tabLabel: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '400' },
-  tabLabelActive: { color: TEXT_DARK, fontWeight: '600' },
 });

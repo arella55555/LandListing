@@ -1,5 +1,23 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { QueryResult } from 'pg';
+
+// Helper: hydrate listing with its images and primary_image_url
+const hydrateListingImages = async (listing: any) => {
+  const imageResult: QueryResult = await pool.query(
+    `SELECT id, listing_id, image_url, is_primary, sort_order
+     FROM listing_images
+     WHERE listing_id = $1
+     ORDER BY sort_order ASC, id ASC`,
+    [listing.id]
+  );
+  const images = imageResult.rows;
+  return {
+    ...listing,
+    images,
+    primary_image_url: images.find((img: any) => img.is_primary)?.image_url ?? images[0]?.image_url ?? null,
+  };
+};
 
 export const createFavoritelisting = async (req: Request, res: Response) => {
     try {
@@ -42,7 +60,9 @@ export const getAllFavoritelistings = async (req: Request, res: Response) => {
             ORDER BY s.saved_at DESC`,
             [user_id]
         );
-    res.status(200).json({ favorites: result.rows });
+    // Hydrate each listing with its images
+    const rows = await Promise.all(result.rows.map(async (r: any) => await hydrateListingImages(r)));
+    res.status(200).json({ favorites: rows });
   } catch (error) {
     res.status(500).json({ message: "Error fetching favorited listings", error });
   }
@@ -66,14 +86,15 @@ export const getFavoriteListing = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Saved listing record not found." });
     }
 
-    const savedItem = result.rows[0];
+    let savedItem = result.rows[0];
 
     if (savedItem.bookmark_owner_id !== user_id && role !== 'admin') {
       return res.status(403).json({ message: "Forbidden. This bookmark does not belong to you." });
     }
 
     delete savedItem.bookmark_owner_id;
-
+    // hydrate images for this listing
+    savedItem = await hydrateListingImages(savedItem);
     res.status(200).json({ saved_listing: savedItem });
   } catch (error) {
     res.status(500).json({ message: "Error fetching individual saved listing.", error });

@@ -24,6 +24,7 @@ export interface ListingImage {
 }
 
 export interface Listing {
+  saved_id?: string;
   id: string;
   seller_id: string;
   category_id: number;
@@ -43,6 +44,7 @@ export interface Listing {
   created_at: string;
   updated_at: string;
   images?: ListingImage[];
+  image_url?: string;
   is_favorited?: boolean;   // mapped from backend's is_saved
   is_saved?: boolean;       // raw backend field
   primary_image_url?: string;
@@ -88,13 +90,6 @@ export interface ListingFilters {
 function normalize(listing: any): Listing {
   return {
     ...listing,
-    id: String(listing.id),
-    seller_id: String(listing.seller_id),
-    category_id: Number(listing.category_id),
-    price: Number(listing.price),
-    area_sqm: Number(listing.area_sqm),
-    latitude: Number(listing.latitude),
-    longitude: Number(listing.longitude),
     is_favorited: listing.is_saved ?? listing.is_favorited ?? false,
   };
 }
@@ -178,23 +173,25 @@ export const listingService = {
    * Backend returns: { listings: [...] }
    */
   async getFavorites(): Promise<Listing[]> {
-    const response = await api.get('/listings/favorites');
-    const rows = response.data?.listings ?? response.data ?? [];
+    const response = await api.get('/favorites');
+    const rows = response.data?.favorites ?? response.data?.listings ?? response.data ?? [];
     return rows.map(normalize);
   },
 
   /**
    * POST /listings/:id/favorite
    */
-  async addFavorite(listingId: string): Promise<void> {
-    await api.post(`/listings/${listingId}/favorite`);
+  async addFavorite(listingId: string): Promise<string> {
+    const response = await api.post('/favorites', { listing_id: listingId });
+    const fav = response.data?.favorite ?? response.data;
+    return fav?.id;
   },
 
   /**
    * DELETE /listings/:id/favorite
    */
-  async removeFavorite(listingId: string): Promise<void> {
-    await api.delete(`/listings/${listingId}/favorite`);
+  async removeFavorite(savedId: string): Promise<void> {
+    await api.delete(`/favorites/${savedId}`);
   },
 
   /**
@@ -202,7 +199,7 @@ export const listingService = {
    */
   async toggleFavorite(listing: Listing): Promise<boolean> {
     if (listing.is_favorited) {
-      await listingService.removeFavorite(listing.id);
+      await listingService.removeFavorite(listing.saved_id ?? listing.id);
       return false;
     } else {
       await listingService.addFavorite(listing.id);

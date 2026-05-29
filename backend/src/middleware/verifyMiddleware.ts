@@ -10,6 +10,5 @@ export const requireVerification = (req: Request, res: Response, next: NextFunct
       message: "Access Denied. Your account is unverified. Please confirm your email/phone records to proceed." 
     });
   }
-
   next();
 };

@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
+import { ToastHost } from '../src/components/AppToast';
 
 export default function RootLayout() {
   return (
     <View style={styles.container}>
       <Stack screenOptions={{ headerShown: false }} />
+      <ToastHost />
     </View>
   );
 }

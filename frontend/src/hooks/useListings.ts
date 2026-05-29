@@ -15,6 +15,7 @@ import {
   UpdateListingPayload,
   ListingFilters,
 } from '../services/listingService';
+import { showToast } from '../components/AppToast';
 
 const USE_MOCK = false;
 
@@ -122,20 +123,39 @@ export function useListings(filters?: ListingFilters) {
 
   // ── Toggle favorite ─────────────────────────
   const toggleFavorite = async (id: string): Promise<void> => {
-    // Update shared state immediately
-    setListings(prev =>
-      prev.map(l => l.id === id ? { ...l, is_favorited: !l.is_favorited } : l)
-    );
-    const listing = _listings.find(l => l.id === id);
-    if (listing) {
-      try {
-        await listingService.toggleFavorite(listing);
-      } catch {
-        // Rollback on error
-        setListings(prev =>
-          prev.map(l => l.id === id ? { ...l, is_favorited: !l.is_favorited } : l)
-        );
+    // Determine current state before optimistic update
+    const current = _listings.find(l => l.id === id);
+    if (!current) return;
+
+    const shouldBeFavorited = !current.is_favorited;
+
+    // Optimistic UI update
+    setListings(prev => prev.map(l => l.id === id ? { ...l, is_favorited: shouldBeFavorited } : l));
+
+    try {
+      if (shouldBeFavorited) {
+        // Add favorite and store returned saved_id on the listing
+        const savedId = await listingService.addFavorite(id);
+        setListings(prev => prev.map(l => l.id === id ? { ...l, is_favorited: true, saved_id: savedId } : l));
+        showToast('Listing added to favorites', 'success');
+      } else {
+        // Remove favorite — backend expects the saved_listings id.
+        let savedId = current.saved_id;
+        if (!savedId) {
+          // Try to resolve saved_id by fetching user's favorites
+          const favs = await listingService.getFavorites();
+          const match = favs.find(f => f.id === id);
+          savedId = match?.saved_id;
+        }
+        if (!savedId) throw new Error('Could not determine saved_id for this listing');
+        await listingService.removeFavorite(savedId);
+        setListings(prev => prev.map(l => l.id === id ? { ...l, is_favorited: false, saved_id: undefined } : l));
+        showToast('Listing removed from favorites', 'info');
       }
+    } catch (err) {
+      // Rollback on error
+      setListings(prev => prev.map(l => l.id === id ? { ...l, is_favorited: !shouldBeFavorited } : l));
+      showToast('Could not update favorites', 'error');
     }
   };
 
@@ -220,6 +240,7 @@ export function useFavorites() {
   const [, rerender] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<Listing[]>([]);
 
   useEffect(() => {
     const listener = () => rerender(n => n + 1);
@@ -232,10 +253,21 @@ export function useFavorites() {
     setError(null);
     try {
       const data = await listingService.getFavorites();
-      data.forEach(incoming => {
-        setListings(prev =>
-          prev.map(l => l.id === incoming.id ? { ...l, is_favorited: true } : l)
-        );
+      const hydratedFavorites = data.map(incoming => ({ ...incoming, is_favorited: true }));
+      setFavorites(hydratedFavorites);
+      setListings(prev => {
+        const next = [...prev];
+
+        hydratedFavorites.forEach(incoming => {
+          const index = next.findIndex(l => l.id === incoming.id);
+          if (index >= 0) {
+            next[index] = { ...next[index], ...incoming };
+          } else {
+            next.unshift(incoming);
+          }
+        });
+
+        return next;
       });
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load favorites');
@@ -249,20 +281,20 @@ export function useFavorites() {
   }, [fetchFavorites]);
 
   // Favorites = listings with is_favorited = true
-  const favorites = _listings.filter(l => l.is_favorited);
-
   const removeFavorite = async (id: string) => {
-    setListings(prev =>
-      prev.map(l => l.id === id ? { ...l, is_favorited: false } : l)
-    );
+    setFavorites(prev => prev.filter(l => (l.saved_id ?? l.id) !== id && l.id !== id));
+    setListings(prev => prev.map(l =>
+      (l.saved_id ?? l.id) === id || l.id === id ? { ...l, is_favorited: false } : l
+    ));
     if (!USE_MOCK) {
       try {
         await listingService.removeFavorite(id);
       } catch {
         // Rollback
-        setListings(prev =>
-          prev.map(l => l.id === id ? { ...l, is_favorited: true } : l)
-        );
+        setFavorites(prev => prev.map(l => (l.saved_id ?? l.id) === id || l.id === id ? { ...l, is_favorited: true } : l));
+        setListings(prev => prev.map(l =>
+          (l.saved_id ?? l.id) === id || l.id === id ? { ...l, is_favorited: true } : l
+        ));
       }
     }
   };
