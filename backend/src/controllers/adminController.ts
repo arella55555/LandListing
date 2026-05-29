@@ -1,61 +1,132 @@
-import { Request, Response } from 'express';
-import { pool } from '../config/db';
+import { Request, Response } from "express";
+import  AdminService from "../services/adminService";
 
-export const createAdminLog = async (req: Request, res: Response) => {
-  try {
-    const admin_id = req.user?.id; 
-    const { action, target_type, target_id, notes } = req.body;
+export class AdminController {
 
-    if (!action || !target_type || !target_id) {
-      return res.status(400).json({ message: "Action, target type, and target ID are required." });
-    }
+  static async dashboard(req: Request, res: Response) {
+    const data = await AdminService.getDashboardStats();
+    res.json(data);
+  }
 
-    const result = await pool.query(
-      `INSERT INTO admin_logs (admin_id, action, target_type, target_id, notes) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING *`,
-      [admin_id, action, target_type, target_id, notes || null]
+  static async users(
+  req: Request,
+  res: Response
+) {
+
+  const users =
+    await AdminService.getUsers();
+
+  res.json({
+    users,
+  });
+}
+
+static async approveSeller(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.approveSeller(
+      req.params.id,
+      req.user.id
     );
 
-    res.status(201).json({ message: "Admin audit log entry recorded.", log: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ message: "Error recording admin log entry.", error });
-  }
-};
+  res.json(result);
+}
 
-export const getAllAdminLogs = async (req: Request, res: Response) => {
-  try {
-    
-    const result = await pool.query(
-      `SELECT al.*, u.full_name as admin_name 
-       FROM admin_logs al
-       JOIN users u ON al.admin_id = u.id
-       ORDER BY al.created_at DESC`
-    );
-    res.status(200).json({ logs: result.rows });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching system audit logs.", error });
-  }
-};
+static async rejectSeller(
+  req: any,
+  res: Response
+) {
 
-export const getAdminLogById = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      `SELECT al.*, u.full_name as admin_name 
-       FROM admin_logs al
-       JOIN users u ON al.admin_id = u.id
-       WHERE al.id = $1`,
-      [id]
+  const result =
+    await AdminService.rejectSeller(
+      req.params.id,
+      req.user.id
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Audit log entry not found." });
-    }
+  res.json(result);
+}
 
-    res.status(200).json({ log: result.rows[0] });
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching individual log record.", error });
+static async unsuspendUser(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.unsuspendUser(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
+  static async listings(
+  req: Request,
+  res: Response
+) {
+
+  const listings =
+    await AdminService.getListings();
+
+  res.json({
+    listings,
+  });
+}
+
+  static async approveListing(req: any, res: Response) {
+    const result = await AdminService.approveListing(
+      req.params.id,
+      req.user.id
+    );
+
+    res.json(result);
   }
-};
+
+  static async rejectListing(req: any, res: Response) {
+    const result = await AdminService.rejectListing(
+      req.params.id,
+      req.user.id
+    );
+
+    res.json(result);
+  }
+
+  static async flagListing(req: any, res: Response) {
+  const result = await AdminService.flagListing(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json(result);
+}
+static async revertListing(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.revertListing(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
+  static async suspendUser(req: any, res: Response) {
+    const result = await AdminService.suspendUser(
+      req.params.id,
+      req.user.id
+    );
+
+    res.json(result);
+  }
+
+  static async logs(req: Request, res: Response) {
+    const logs = await AdminService.getLogs();
+    res.json(logs);
+  }
+}

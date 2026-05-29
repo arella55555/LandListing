@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../config/db';
+import pool  from '../config/db';
 
 export const createCategory = async (req: Request, res: Response) => {
   try {

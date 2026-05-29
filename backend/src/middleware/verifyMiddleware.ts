@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 
 export const requireVerification = (req: Request, res: Response, next: NextFunction) => {
-  if (req.user?.role === 'admin') {
+  if (req.user?.role === "admin" ||
+  req.user?.role === "superadmin") {
     return next();
   }
 

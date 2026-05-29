@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../config/db';
+import pool from '../config/db';
 import jwt from 'jsonwebtoken';
 
 type TitleStatus = 'TCT' | 'OCT' | 'tax_dec' | 'other';

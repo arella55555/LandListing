@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 
-type UserRole = 'buyer' | 'seller' | 'admin';
+type UserRole =
+  | "buyer"
+  | "seller"
+  | "admin"
+  | "superadmin";
 
 declare global {
   namespace Express {

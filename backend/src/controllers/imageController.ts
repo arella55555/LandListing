@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../config/db';
+import pool from '../config/db';
 
 const verifyListingOwnership = async (listingId: string, userId: string, userRole: string): Promise<boolean> => {
   if (userRole === 'admin') return true;

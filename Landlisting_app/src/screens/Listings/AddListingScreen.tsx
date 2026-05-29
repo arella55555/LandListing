@@ -144,7 +144,7 @@ export default function AddListingScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BG} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={goBack} style={styles.headerBack}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
           <Text style={styles.headerBackIcon}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add Listing</Text>

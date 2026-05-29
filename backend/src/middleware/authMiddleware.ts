@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
-type UserRole = 'buyer' | 'seller' | 'admin';
+type UserRole =
+  | "buyer"
+  | "seller"
+  | "admin"
+  | "superadmin";
 
 declare global {
   namespace Express {
