@@ -3,12 +3,13 @@
  * Uses shared useListings hook for delete + update to reflect instantly.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, SafeAreaView, StatusBar, Alert,
   Platform, RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
 import { Listing } from '../../services/listingService';
@@ -31,16 +32,36 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   rejected: { bg: '#FEE2E2', text: '#DC2626' },
 };
 
-const MY_SELLER_ID = 'seller-1'; // TODO: replace with real auth user id
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH');
 
 export default function MyListingsScreen() {
   const router = useRouter();
   const { listings: allListings, deleteListing, refetch } = useListings();
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const loadUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setCurrentUserId(storedUserId ?? null);
+    };
+
+    loadUserId();
+  }, []);
+
+  if (currentUserId === undefined) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={BG} />
+        <View style={styles.loadingBox}>
+          <Text style={styles.emptyTitle}>Loading your listings...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Only show listings owned by current user
-  const listings = allListings.filter(l => l.seller_id === MY_SELLER_ID);
+  const listings = currentUserId ? allListings.filter(l => l.seller_id === currentUserId) : [];
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -140,7 +161,9 @@ export default function MyListingsScreen() {
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>🏞</Text>
             <Text style={styles.emptyTitle}>No listings yet</Text>
-            <Text style={styles.emptySubtitle}>Tap + to create your first listing.</Text>
+            <Text style={styles.emptySubtitle}>
+              Tap + to create your first listing and it will appear here.
+            </Text>
           </View>
         }
       />
@@ -209,6 +232,7 @@ const styles = StyleSheet.create({
   editIcon: { fontSize: 18, color: TEXT_MED },
   deleteIcon: { fontSize: 18 },
   emptyBox: { marginTop: 80, alignItems: 'center', gap: 10 },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK },
   emptySubtitle: { fontSize: 14, color: TEXT_MED, textAlign: 'center' },

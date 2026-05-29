@@ -10,7 +10,14 @@ export default function App() {
 	useEffect(() => {
 		const bootstrap = async () => {
 			const token = await AsyncStorage.getItem('token');
-			router.replace(token ? '/home' : '/login');
+			const userRole = await AsyncStorage.getItem('userRole');
+			if (!token) {
+				router.replace('/login');
+				setReady(true);
+				return;
+			}
+
+			router.replace(userRole === 'seller' ? '/my-listings' : '/home');
 			setReady(true);
 		};
 

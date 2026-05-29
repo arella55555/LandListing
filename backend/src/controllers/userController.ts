@@ -40,7 +40,17 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user.id, role: user.role, is_verified: user.is_verified }, JWT_SECRET, { expiresIn: '24h' });
-    res.status(200).json({ message: "Login successful", token });
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        is_verified: user.is_verified,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Login failed", error });
   }

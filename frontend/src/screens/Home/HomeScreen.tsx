@@ -131,7 +131,7 @@ const HomeScreen: React.FC = () => {
           style={styles.logoutButton}
           onPress={async () => {
             try {
-              await AsyncStorage.removeItem('token');
+                    await AsyncStorage.multiRemove(['token', 'userId', 'userRole']);
               router.replace('/login');
             } catch (err) {
               Alert.alert('Error', 'Could not log out.');

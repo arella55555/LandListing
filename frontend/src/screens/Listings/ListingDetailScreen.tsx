@@ -3,7 +3,7 @@
  * Uses shared useListings hook for delete + favorite.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
   TouchableOpacity, SafeAreaView, StatusBar,
@@ -42,9 +42,14 @@ export default function ListingDetailScreen() {
   const params = useLocalSearchParams<{ id?: string; data?: string }>();
   const { deleteListing, toggleFavorite } = useListings();
 
-  const seedListing: Listing | null = params.data
-    ? (JSON.parse(params.data as string) as Listing)
-    : null;
+  const seedListing: Listing | null = useMemo(() => {
+    if (!params.data) return null;
+    try {
+      return JSON.parse(params.data as string) as Listing;
+    } catch {
+      return null;
+    }
+  }, [params.data]);
 
   // Never show loading if we already have seed data
   const [listing, setListing]       = useState<Listing | null>(seedListing);
@@ -56,13 +61,14 @@ export default function ListingDetailScreen() {
   // Only fetch from API if we have NO seed data
   useEffect(() => {
     const id = params.id as string;
-    if (!id || seedListing) return;
+    const seedHasImages = !!seedListing && ((seedListing.images?.length ?? 0) > 0 || !!seedListing.primary_image_url);
+    if (!id || (seedListing && seedHasImages)) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
         const data = await listingService.getById(id);
-        if (!cancelled) setListing(data);
+        if (!cancelled) setListing(prev => ({ ...prev, ...data } as Listing));
       } catch {
         Alert.alert('Error', 'Could not load listing.');
         router.back();
@@ -71,7 +77,7 @@ export default function ListingDetailScreen() {
       }
     })();
     return () => { cancelled = true; };
-  }, [params.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [params.id, params.data]);
 
   const images: string[] =
     listing?.images?.map(i => i.image_url) ??

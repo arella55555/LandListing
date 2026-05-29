@@ -46,14 +46,21 @@ export default function LoginScreen() {
     try {
       const response = await authAPI.login({ email, password });
       const token = response.data?.token;
+      const user = response.data?.user;
 
       if (!token) {
         throw new Error('Missing token from login response');
       }
 
       await AsyncStorage.setItem('token', token);
+      if (user?.id) {
+        await AsyncStorage.setItem('userId', String(user.id));
+      }
+      if (user?.role) {
+        await AsyncStorage.setItem('userRole', String(user.role));
+      }
       Alert.alert("Success", `Login successful as ${selectedRole}!`);
-      router.replace('/home');
+      router.replace(user?.role === 'seller' ? '/my-listings' : '/home');
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -107,7 +114,7 @@ export default function LoginScreen() {
 
   const handleClearSession = async () => {
     try {
-      await AsyncStorage.removeItem('token');
+      await AsyncStorage.multiRemove(['token', 'userId', 'userRole']);
       setIsLogin(true);
       Alert.alert('Session cleared', 'Saved login state was removed.');
     } catch (error) {

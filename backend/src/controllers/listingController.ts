@@ -8,6 +8,23 @@ type ListingStatus = 'draft' | 'pending' | 'active' | 'sold' | 'leased' | 'rente
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
+const hydrateListingImages = async (listing: any) => {
+  const imageResult = await pool.query(
+    `SELECT id, listing_id, image_url, is_primary, sort_order
+     FROM listing_images
+     WHERE listing_id = $1
+     ORDER BY sort_order ASC, id ASC`,
+    [listing.id]
+  );
+
+  const images = imageResult.rows;
+  return {
+    ...listing,
+    images,
+    primary_image_url: images.find((image: any) => image.is_primary)?.image_url ?? images[0]?.image_url ?? null,
+  };
+};
+
 const getOptionalUserId = (req: Request): string | null => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -96,7 +113,8 @@ export const getAllListings = async (req: Request, res: Response) => {
     `;
 
     const result = await pool.query(query, [currentUserId]);
-    res.status(200).json({ listings: result.rows });
+    const listings = await Promise.all(result.rows.map(hydrateListingImages));
+    res.status(200).json({ listings });
   } catch (error) {
     res.status(500).json({ message: "Error fetching listings", error });
   }
@@ -121,7 +139,8 @@ export const getListing = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
-    res.status(200).json({ listing: result.rows[0] });
+    const listing = await hydrateListingImages(result.rows[0]);
+    res.status(200).json({ listing });
   } catch (error) {
     res.status(500).json({ message: "Error fetching listing", error });
   }
