@@ -20,9 +20,7 @@ import {
   useState,
 } from "react";
 
-import { Ionicons } from "@expo/vector-icons";
-
-import {
+import { Ionicons } from "@expo/vector-icons";import {
   getUsers,
 } from "../../../services/adminService";
 
@@ -206,14 +204,21 @@ export default function AdminUsersScreen() {
 
         case "sellers":
 
-          filtered =
-            filtered.filter(
-              (u) =>
-                u.role === "seller" ||
-                u.seller_verification_status !== null
-            );
+  filtered = filtered.filter((u) => {
 
-          break;
+    if (u.is_suspended) {
+      return false;
+    }
+
+    return (
+      u.role === "seller" ||
+      u.seller_verification_status === "pending" ||
+      u.seller_verification_status === "approved" ||
+      sellerVerificationTab === "rejected"
+    );
+  });
+
+  break;
 
         case "suspended":
 
@@ -243,8 +248,7 @@ export default function AdminUsersScreen() {
               filtered.filter(
                 (u) =>
                   (
-                    u.seller_verification_status ||
-                    "pending"
+                    u.seller_verification_status ==="pending" && u.is_verified === false && u.role==="buyer" && "pending"
                   ) ===
                   "pending"
               );
@@ -268,7 +272,7 @@ export default function AdminUsersScreen() {
               filtered.filter(
                 (u) =>
                   u.seller_verification_status ===
-                  "rejected"
+                  "rejected" || u.role==="buyer" && u.seller_verification_status==="rejected"
               );
 
             break;
