@@ -12,6 +12,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
 import { Listing, UpdateListingPayload } from '../../services/listingService';
+import * as ImagePicker from 'expo-image-picker';
+import { listingImageAPI } from '../../services/api';
 
 const PRIMARY       = '#27AE60';
 const PRIMARY_LIGHT = '#E8F8EF';
@@ -132,6 +134,51 @@ export default function EditListingScreen() {
     if (form.image_urls.includes(url)) { Alert.alert('Duplicate', 'Already added.'); return; }
     set('image_urls', [...form.image_urls, url]);
     set('imageInput', '');
+  };
+
+  const pickAndUpload = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Media library permission is required to pick images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+      const asset = result.assets && result.assets[0];
+      if (!asset || !asset.uri) return;
+
+      const uri = asset.uri;
+      const name = uri.split('/').pop() || `photo_${Date.now()}.jpg`;
+      const match = name.match(/\.([0-9a-z]+)$/i);
+      const ext = match ? match[1] : 'jpg';
+      const type = asset.type ? `${asset.type}/${ext}` : `image/${ext}`;
+
+      const formData = new FormData();
+      // @ts-ignore
+      formData.append('file', { uri, name, type });
+
+      setSub(true);
+      const resp = await listingImageAPI.upload(formData);
+      const secure = resp?.data?.secure_url;
+      if (secure) {
+        if (form.image_urls.includes(secure)) { Alert.alert('Duplicate', 'Already added.'); }
+        else set('image_urls', [...form.image_urls, secure]);
+      } else {
+        Alert.alert('Upload failed', 'No URL returned from server.');
+      }
+    } catch (err: any) {
+      console.error('Upload error', err);
+      Alert.alert('Upload error', err?.message ?? 'Failed to upload image.');
+    } finally {
+      setSub(false);
+    }
   };
 
   const removeImage = (url: string) =>
@@ -317,6 +364,9 @@ export default function EditListingScreen() {
               placeholder="Paste image URL to add more" placeholderTextColor={TEXT_LIGHT}
               value={form.imageInput} onChangeText={(v: string) => set('imageInput', v)}
               autoCapitalize="none" returnKeyType="done" onSubmitEditing={addImage} />
+            <TouchableOpacity style={[styles.addImgBtn, { marginRight: 8 }]} onPress={pickAndUpload}>
+              <Text style={styles.addImgBtnText}>📷 Pick</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.addImgBtn} onPress={addImage}>
               <Text style={styles.addImgBtnText}>↑ Add</Text>
             </TouchableOpacity>

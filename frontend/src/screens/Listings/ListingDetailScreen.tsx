@@ -9,6 +9,7 @@ import {
   TouchableOpacity, SafeAreaView, StatusBar,
   Dimensions, ActivityIndicator, Alert, Platform, FlatList,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useListings } from '../../hooks/useListings';
 import { Listing, listingService } from '../../services/listingService';
@@ -35,8 +36,6 @@ const STATUS_COLORS: Record<string, string> = {
   draft: '#9CA3AF', rejected: '#EF4444',
 };
 
-const MY_SELLER_ID = 'seller-1'; // TODO: replace with real auth
-
 export default function ListingDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string; data?: string }>();
@@ -55,8 +54,18 @@ export default function ListingDetailScreen() {
   const [listing, setListing]       = useState<Listing | null>(seedListing);
   const [loading, setLoading]       = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
-  const isOwner = listing?.seller_id === MY_SELLER_ID;
+  useEffect(() => {
+    const loadUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setCurrentUserId(storedUserId ?? null);
+    };
+
+    loadUserId();
+  }, []);
+
+  const isOwner = !!listing && !!currentUserId && listing.seller_id === currentUserId;
 
   // Only fetch from API if we have NO seed data
   useEffect(() => {

@@ -153,7 +153,7 @@ export const updateListing = async (req: Request, res: Response) => {
     const {
       category_id, title, description, price, area_sqm,
       latitude, longitude, barangay, municipality, province,
-      title_status, listing_type, status, negotiable
+      title_status, listing_type, status, negotiable, image_urls
     } = req.body;
 
     const checkOwnership = await pool.query('SELECT seller_id FROM listings WHERE id = $1', [id]);
@@ -191,7 +191,25 @@ export const updateListing = async (req: Request, res: Response) => {
       ]
     );
 
-    res.status(200).json({ message: "Listing updated successfully", listing: result.rows[0] });
+    const updatedListing = result.rows[0];
+
+    if (Array.isArray(image_urls)) {
+      await pool.query('DELETE FROM listing_images WHERE listing_id = $1', [id]);
+
+      if (image_urls.length > 0) {
+        const inserts = image_urls.map((url: string, idx: number) => {
+          return pool.query(
+            `INSERT INTO listing_images (listing_id, image_url, is_primary, sort_order)
+             VALUES ($1, $2, $3, $4)`,
+            [id, url, idx === 0, idx]
+          );
+        });
+        await Promise.all(inserts);
+      }
+    }
+
+    const listing = await hydrateListingImages(updatedListing);
+    res.status(200).json({ message: "Listing updated successfully", listing });
   } catch (error) {
     res.status(500).json({ message: "Error updating listing", error });
   }

@@ -177,8 +177,7 @@ export default function MyListingsScreen() {
       </TouchableOpacity>
 
       <View style={styles.tabBar}>
-        <TabItem icon="⌂"  label="Home"        onPress={() => router.push('/' as any)} />
-        <TabItem icon="♡"  label="Favorites"   onPress={() => router.push('/favorites' as any)} />
+        <TabItem icon="＋"  label="Add Listing" onPress={() => router.push('/listing/add' as any)} />
         <TabItem icon="≡"  label="My Listings" active />
         <TabItem icon="👤" label="Profile"     onPress={() => router.push('/profile' as any)} />
       </View>
