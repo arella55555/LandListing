@@ -6,7 +6,12 @@ class AdminService {
   // DASHBOARD
   // =========================================
 
-  static async getDashboardStats() {
+  // =========================================
+// DASHBOARD
+// =========================================
+
+static async getDashboardStats() {
+
   const [
     totalUsers,
     totalListings,
@@ -21,57 +26,122 @@ class AdminService {
     recentListings,
     recentLogs,
   ] = await Promise.all([
-    pool.query(`SELECT COUNT(*) FROM users`),
 
-    pool.query(`SELECT COUNT(*) FROM listings`),
-
-    pool.query(`
-      SELECT COUNT(*) FROM listings
-      WHERE moderation_status = 'pending'
-    `),
-
-    pool.query(`
-      SELECT COUNT(*) FROM listings
-      WHERE moderation_status = 'approved'
-    `),
-
+    // TOTAL USERS
     pool.query(`
       SELECT COUNT(*) FROM users
+    `),
+
+    // TOTAL LISTINGS
+    pool.query(`
+      SELECT COUNT(*) FROM listings
+    `),
+
+    // TRUE PENDING MODERATION
+    // MUST BE:
+    // status = pending
+    // moderation_status = pending
+    pool.query(`
+      SELECT COUNT(*)
+      FROM listings
+      WHERE
+        LOWER(COALESCE(status, '')) = 'pending'
+      AND
+        LOWER(COALESCE(moderation_status, '')) = 'pending'
+    `),
+
+    // APPROVED
+    pool.query(`
+      SELECT COUNT(*)
+      FROM listings
+      WHERE
+        LOWER(COALESCE(moderation_status, '')) = 'approved'
+    `),
+
+    // SUSPENDED USERS
+    pool.query(`
+      SELECT COUNT(*)
+      FROM users
       WHERE is_suspended = true
     `),
 
+    // VERIFIED USERS
     pool.query(`
-      SELECT COUNT(*) FROM users
+      SELECT COUNT(*)
+      FROM users
       WHERE is_verified = true
     `),
 
+    // ADMINS
     pool.query(`
-      SELECT COUNT(*) FROM users
+      SELECT COUNT(*)
+      FROM users
       WHERE role IN ('admin', 'superadmin')
     `),
 
+    // FRAUD REPORTS
     pool.query(`
-      SELECT COUNT(*) FROM listing_reports
+      SELECT COUNT(*)
+      FROM listing_reports
       WHERE reason ILIKE '%fraud%'
     `),
 
+    // FLAGGED LISTINGS
     pool.query(`
-      SELECT COUNT(*) FROM listings
-      WHERE moderation_status = 'flagged'
+      SELECT COUNT(*)
+      FROM listings
+      WHERE
+        LOWER(COALESCE(moderation_status, '')) = 'flagged'
     `),
 
+    // OPEN REPORTS
     pool.query(`
-      SELECT COUNT(*) FROM listing_reports
+      SELECT COUNT(*)
+      FROM listing_reports
       WHERE status = 'open'
     `),
 
+    // MODERATION QUEUE
+    // ONLY REAL PENDING ITEMS
+    // LIMITED TO 3
     pool.query(`
-      SELECT l.id, l.title, l.price, l.created_at
+      SELECT
+        l.id,
+        l.title,
+        l.price,
+        l.created_at,
+        l.status,
+        l.moderation_status,
+        l.barangay,
+        l.municipality,
+        l.province,
+
+        u.full_name AS seller_name,
+
+        (
+          SELECT image_url
+          FROM listing_images li
+          WHERE li.listing_id = l.id
+          ORDER BY li.is_primary DESC
+          LIMIT 1
+        ) AS image
+
       FROM listings l
+
+      LEFT JOIN users u
+      ON u.id = l.seller_id
+
+      WHERE
+        LOWER(COALESCE(l.status, '')) = 'pending'
+      AND
+        LOWER(COALESCE(l.moderation_status, '')) = 'pending'
+
       ORDER BY l.created_at DESC
-      LIMIT 5
+
+      LIMIT 3
     `),
 
+    // RECENT LOGS
     pool.query(`
       SELECT *
       FROM admin_logs
@@ -82,21 +152,51 @@ class AdminService {
 
   return {
     stats: {
-      totalUsers: Number(totalUsers.rows[0].count),
-      totalListings: Number(totalListings.rows[0].count),
-      pendingListings: Number(pendingListings.rows[0].count),
-      approvedListings: Number(approvedListings.rows[0].count),
-      suspendedUsers: Number(suspendedUsers.rows[0].count),
-      verifiedUsers: Number(verifiedUsers.rows[0].count),
-      admins: Number(adminUsers.rows[0].count),
+      totalUsers: Number(
+        totalUsers.rows[0].count
+      ),
+
+      totalListings: Number(
+        totalListings.rows[0].count
+      ),
+
+      pendingListings: Number(
+        pendingListings.rows[0].count
+      ),
+
+      approvedListings: Number(
+        approvedListings.rows[0].count
+      ),
+
+      suspendedUsers: Number(
+        suspendedUsers.rows[0].count
+      ),
+
+      verifiedUsers: Number(
+        verifiedUsers.rows[0].count
+      ),
+
+      admins: Number(
+        adminUsers.rows[0].count
+      ),
     },
 
     alerts: {
-      fraudReports: Number(fraudReports.rows[0].count),
-      flaggedListings: Number(flaggedListings.rows[0].count),
-      openReports: Number(openReports.rows[0].count),
+      fraudReports: Number(
+        fraudReports.rows[0].count
+      ),
+
+      flaggedListings: Number(
+        flaggedListings.rows[0].count
+      ),
+
+      openReports: Number(
+        openReports.rows[0].count
+      ),
     },
 
+    // THIS NOW RETURNS ONLY TRUE
+    // PENDING MODERATION ITEMS
     recentListings: recentListings.rows,
 
     activity: recentLogs.rows,

@@ -1,5 +1,5 @@
 // app/admin/dashboard.tsx
-// LUPA.PH — ADMIN DASHBOARD (FULLY FIXED)
+// LUPA.PH — ADMIN DASHBOARD (RESPONSIVE FINAL)
 
 import React, {
   useCallback,
@@ -18,6 +18,7 @@ import {
   StatusBar,
   RefreshControl,
   Alert,
+  Dimensions,
 } from "react-native";
 
 import {
@@ -34,6 +35,19 @@ import {
 import {
   approveListing,
 } from "../../../services/adminService";
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+
+const SCREEN_WIDTH =
+  Dimensions.get("window").width;
+
+const IS_TABLET =
+  SCREEN_WIDTH >= 768;
+
+const IS_WEB_LAYOUT =
+  SCREEN_WIDTH >= 1100;
 
 /* ======================================================
    PALETTE
@@ -332,6 +346,7 @@ export default function AdminDashboardScreen() {
         }
         contentContainerStyle={{
           paddingBottom: 120,
+          alignItems: "center",
         }}
         refreshControl={
           <RefreshControl
@@ -348,439 +363,457 @@ export default function AdminDashboardScreen() {
         }
       >
 
-        {/* HEADER */}
+        <View style={styles.contentWrapper}>
 
-        <View style={styles.header}>
+          {/* HEADER */}
 
-          <View style={{ flex: 1 }}>
+          <View style={styles.header}>
 
-            <Text style={styles.brand}>
-              Lupa.ph Admin
-            </Text>
+            <View style={{ flex: 1 }}>
 
-            <Text style={styles.headerTitle}>
-              Dashboard
-            </Text>
+              <Text style={styles.brand}>
+                Lupa.ph Admin
+              </Text>
 
-            <Text
-              style={
-                styles.headerSubtitle
-              }
+              <Text style={styles.headerTitle}>
+                Dashboard
+              </Text>
+
+              <Text
+                style={
+                  styles.headerSubtitle
+                }
+              >
+                Monitor listings,
+                users, reports and
+                moderation.
+              </Text>
+
+            </View>
+
+            <View
+              style={styles.headerActions}
             >
-              Monitor listings,
-              users, reports and
-              moderation.
-            </Text>
+
+              <TouchableOpacity
+                style={
+                  styles.notificationButton
+                }
+                onPress={
+                  goToListingsPending
+                }
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={22}
+                  color={TEXT_DARK}
+                />
+
+                {pendingListings > 0 && (
+                  <View
+                    style={
+                      styles.notificationBadge
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.notificationText
+                      }
+                    >
+                      {pendingListings}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <Image
+                source={{
+                  uri: "https://i.pravatar.cc/100",
+                }}
+                style={styles.avatar}
+              />
+
+            </View>
 
           </View>
 
-          <View
-            style={styles.headerActions}
-          >
+          {/* PRIORITY */}
 
+          {pendingListings > 0 && (
             <TouchableOpacity
-              style={
-                styles.notificationButton
-              }
+              style={styles.priorityBar}
+              activeOpacity={0.9}
               onPress={
                 goToListingsPending
               }
             >
+
               <Ionicons
-                name="notifications-outline"
-                size={22}
-                color={TEXT_DARK}
+                name="warning-outline"
+                size={18}
+                color="#92400E"
               />
 
-              {pendingListings > 0 && (
-                <View
-                  style={
-                    styles.notificationBadge
-                  }
-                >
-                  <Text
-                    style={
-                      styles.notificationText
-                    }
-                  >
-                    {pendingListings}
-                  </Text>
-                </View>
-              )}
+              <Text
+                style={
+                  styles.priorityText
+                }
+              >
+                {pendingListings} listings
+                awaiting approval
+              </Text>
+
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color="#92400E"
+                style={{
+                  marginLeft: "auto",
+                }}
+              />
+
+            </TouchableOpacity>
+          )}
+
+          {/* SUMMARY */}
+
+          <View style={styles.summaryCard}>
+            <SummaryItem
+              label="Pending"
+              value={pendingListings}
+            />
+
+            <SummaryItem
+              label="Approved"
+              value={approvedListings}
+            />
+
+            <SummaryItem
+              label="Verified"
+              value={verifiedUsers}
+            />
+          </View>
+
+          {/* OVERVIEW */}
+
+          <Text style={styles.sectionTitle}>
+            Marketplace Overview
+          </Text>
+
+          <View style={styles.statsGrid}>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.gridItem}
+              onPress={
+                goToListingsPending
+              }
+            >
+              <DashboardCard
+                title="Pending"
+                value={pendingListings}
+                subtitle="Listings"
+                icon="document-text-outline"
+                color={ORANGE}
+              />
             </TouchableOpacity>
 
-            <Image
-              source={{
-                uri: "https://i.pravatar.cc/100",
-              }}
-              style={styles.avatar}
-            />
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.gridItem}
+              onPress={goToReports}
+            >
+              <DashboardCard
+                title="Reports"
+                value={
+                  dashboard?.alerts
+                    ?.openReports || 0
+                }
+                subtitle="Open cases"
+                icon="flag-outline"
+                color={RED}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.gridItem}
+              onPress={goToUsers}
+            >
+              <DashboardCard
+                title="Verified"
+                value={verifiedUsers}
+                subtitle="Trusted users"
+                icon="shield-checkmark-outline"
+                color={PRIMARY}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.gridItem}
+              onPress={goToUsers}
+            >
+              <DashboardCard
+                title="Active"
+                value={activeUsers}
+                subtitle="Marketplace users"
+                icon="people-outline"
+                color={BLUE}
+              />
+            </TouchableOpacity>
 
           </View>
 
-        </View>
+          {/* MODERATION */}
 
-        {/* PRIORITY */}
-
-        {pendingListings > 0 && (
-          <TouchableOpacity
-            style={styles.priorityBar}
-            activeOpacity={0.9}
-            onPress={
-              goToListingsPending
-            }
-          >
-
-            <Ionicons
-              name="warning-outline"
-              size={18}
-              color="#92400E"
-            />
+          <View style={styles.sectionHeader}>
 
             <Text
               style={
-                styles.priorityText
+                styles.sectionHeaderTitle
               }
             >
-              {pendingListings}{" "}
-              listings awaiting
-              approval
+              Moderation Queue
             </Text>
 
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="#92400E"
-              style={{
-                marginLeft: "auto",
-              }}
-            />
-
-          </TouchableOpacity>
-        )}
-
-        {/* SUMMARY */}
-
-        <View style={styles.summaryCard}>
-  <SummaryItem label="Pending" value={pendingListings} />
-  <SummaryItem label="Approved" value={approvedListings} />
-  <SummaryItem label="Verified" value={verifiedUsers} />
-</View>
-
-        {/* OVERVIEW */}
-
-        <Text style={styles.sectionTitle}>
-          Marketplace Overview
-        </Text>
-
-        <View style={styles.statsGrid}>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={
-              goToListingsPending
-            }
-          >
-            <DashboardCard
-              title="Pending"
-              value={pendingListings}
-              subtitle="Listings"
-              icon="document-text-outline"
-              color={ORANGE}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={goToReports}
-          >
-            <DashboardCard
-              title="Reports"
-              value={
-                dashboard?.alerts
-                  ?.openReports || 0
-              }
-              subtitle="Open cases"
-              icon="flag-outline"
-              color={RED}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={goToUsers}
-          >
-            <DashboardCard
-              title="Verified"
-              value={verifiedUsers}
-              subtitle="Trusted users"
-              icon="shield-checkmark-outline"
-              color={PRIMARY}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={goToUsers}
-          >
-            <DashboardCard
-              title="Active"
-              value={activeUsers}
-              subtitle="Marketplace users"
-              icon="people-outline"
-              color={BLUE}
-            />
-          </TouchableOpacity>
-
-        </View>
-
-        {/* MODERATION */}
-
-        <View style={styles.sectionHeader}>
-
-          <Text
-            style={
-              styles.sectionHeaderTitle
-            }
-          >
-            Moderation Queue
-          </Text>
-
-          <TouchableOpacity
-            onPress={
-              goToListingsPending
-            }
-          >
-            <Text
-              style={
-                styles.sectionAction
+            <TouchableOpacity
+              onPress={
+                goToListingsPending
               }
             >
-              View all
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-        {dashboard?.recentListings
-          ?.length ? (
-
-          dashboard.recentListings
-            .slice(0, 4)
-            .map((item: any) => {
-
-              const location =
-                [
-                  item?.barangay,
-                  item?.municipality,
-                  item?.province,
-                ]
-                  .filter(Boolean)
-                  .join(", ");
-
-              return (
-                <ModerationCard
-                  key={item.id}
-                  title={item.title}
-                  price={`₱${Number(
-                    item.price || 0
-                  ).toLocaleString()}`}
-                  location={
-                    location ||
-                    "Location unavailable"
-                  }
-                  seller={
-                    item.seller_name ||
-                    "Unknown Seller"
-                  }
-                  image={getListingImage(
-                    item
-                  )}
-                  loading={
-                    approvingId ===
-                    item.id
-                  }
-                  onApprove={() =>
-                    handleApprove(
-                      item.id
-                    )
-                  }
-                  onReview={() =>
-                    navigation.navigate(
-                      "ListingDetails",
-                      {
-                        listing:
-                          item,
-                      }
-                    )
-                  }
-                />
-              );
-            })
-
-        ) : (
-
-          <View style={styles.emptyCard}>
-
-            <Ionicons
-              name="checkmark-circle-outline"
-              size={34}
-              color={PRIMARY}
-            />
-
-            <Text
-              style={styles.emptyTitle}
-            >
-              Moderation queue is
-              clear
-            </Text>
-
-            <Text
-              style={styles.emptySub}
-            >
-              No pending listings
-              right now
-            </Text>
+              <Text
+                style={
+                  styles.sectionAction
+                }
+              >
+                View all
+              </Text>
+            </TouchableOpacity>
 
           </View>
 
-        )}
-
-        {/* QUICK ACTIONS */}
-
-        <View style={styles.sectionHeader}>
-
-          <Text
-            style={
-              styles.sectionHeaderTitle
-            }
-          >
-            Quick Actions
-          </Text>
-
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={
-            false
-          }
-          contentContainerStyle={{
-            paddingRight: 10,
-          }}
-          style={{
-            marginBottom: 24,
-          }}
-        >
-
-          <QuickAction
-            title="Review Listings"
-            subtitle="Pending queue"
-            icon="document-text-outline"
-            color={PRIMARY}
-            onPress={
-              goToListingsPending
-            }
-          />
-
-          <QuickAction
-            title="Reports"
-            subtitle="User complaints"
-            icon="flag-outline"
-            color={RED}
-            onPress={goToReports}
-          />
-
-          <QuickAction
-            title="Manage Users"
-            subtitle="Accounts"
-            icon="people-outline"
-            color={BLUE}
-            onPress={goToUsers}
-          />
-
-          <QuickAction
-            title="Logs"
-            subtitle="Admin activity"
-            icon="reader-outline"
-            color={ORANGE}
-            onPress={goToLogs}
-          />
-
-        </ScrollView>
-
-        {/* ACTIVITY */}
-
-        <View style={styles.sectionHeader}>
-
-          <Text
-            style={
-              styles.sectionHeaderTitle
-            }
-          >
-            Recent Activity
-          </Text>
-
-          <TouchableOpacity
-            onPress={() =>
-              loadDashboard(true)
-            }
-          >
-            <Text
-              style={
-                styles.sectionAction
-              }
-            >
-              Refresh
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
-        <View style={styles.logsCard}>
-
-          {dashboard?.activity
+          {dashboard?.recentListings
             ?.length ? (
 
-            dashboard.activity.map(
-              (log: any) => {
+            dashboard.recentListings
+              .slice(0, 4)
+              .map((item: any) => {
 
-                const activity =
-                  formatActivity(
-                    log
-                  );
+                const location =
+                  [
+                    item?.barangay,
+                    item?.municipality,
+                    item?.province,
+                  ]
+                    .filter(Boolean)
+                    .join(", ");
 
                 return (
-                  <ActivityItem
-                    key={log.id}
-                    text={
-                      activity.text
+                  <ModerationCard
+                    key={item.id}
+                    title={item.title}
+                    price={`₱${Number(
+                      item.price || 0
+                    ).toLocaleString()}`}
+                    location={
+                      location ||
+                      "Location unavailable"
                     }
-                    icon={
-                      activity.icon
+                    seller={
+                      item.seller_name ||
+                      "Unknown Seller"
                     }
-                    time={new Date(
-                      log.created_at
-                    ).toLocaleString()}
-                    color={
-                      activity.color
+                    image={getListingImage(
+                      item
+                    )}
+                    loading={
+                      approvingId ===
+                      item.id
+                    }
+                    onApprove={() =>
+                      handleApprove(
+                        item.id
+                      )
+                    }
+                    onReview={() =>
+                      navigation.navigate(
+                        "ListingDetails",
+                        {
+                          listing:
+                            item,
+                        }
+                      )
                     }
                   />
                 );
-              }
-            )
+              })
 
           ) : (
 
-            <Text
-              style={
-                styles.noActivity
-              }
-            >
-              No recent activity
-            </Text>
+            <View style={styles.emptyCard}>
+
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={34}
+                color={PRIMARY}
+              />
+
+              <Text
+                style={styles.emptyTitle}
+              >
+                Moderation queue is
+                clear
+              </Text>
+
+              <Text
+                style={styles.emptySub}
+              >
+                No pending listings
+                right now
+              </Text>
+
+            </View>
 
           )}
+
+          {/* QUICK ACTIONS */}
+
+          <View style={styles.sectionHeader}>
+
+            <Text
+              style={
+                styles.sectionHeaderTitle
+              }
+            >
+              Quick Actions
+            </Text>
+
+          </View>
+
+          <ScrollView
+            horizontal={!IS_WEB_LAYOUT}
+            showsHorizontalScrollIndicator={
+              false
+            }
+            contentContainerStyle={
+              styles.quickActionsContainer
+            }
+            style={{
+              marginBottom: 24,
+            }}
+          >
+
+            <QuickAction
+              title="Review Listings"
+              subtitle="Pending queue"
+              icon="document-text-outline"
+              color={PRIMARY}
+              onPress={
+                goToListingsPending
+              }
+            />
+
+            <QuickAction
+              title="Reports"
+              subtitle="User complaints"
+              icon="flag-outline"
+              color={RED}
+              onPress={goToReports}
+            />
+
+            <QuickAction
+              title="Manage Users"
+              subtitle="Accounts"
+              icon="people-outline"
+              color={BLUE}
+              onPress={goToUsers}
+            />
+
+            <QuickAction
+              title="Logs"
+              subtitle="Admin activity"
+              icon="reader-outline"
+              color={ORANGE}
+              onPress={goToLogs}
+            />
+
+          </ScrollView>
+
+          {/* ACTIVITY */}
+
+          <View style={styles.sectionHeader}>
+
+            <Text
+              style={
+                styles.sectionHeaderTitle
+              }
+            >
+              Recent Activity
+            </Text>
+
+            <TouchableOpacity
+              onPress={() =>
+                loadDashboard(true)
+              }
+            >
+              <Text
+                style={
+                  styles.sectionAction
+                }
+              >
+                Refresh
+              </Text>
+            </TouchableOpacity>
+
+          </View>
+
+          <View style={styles.logsCard}>
+
+            {dashboard?.activity
+              ?.length ? (
+
+              dashboard.activity.map(
+                (log: any) => {
+
+                  const activity =
+                    formatActivity(
+                      log
+                    );
+
+                  return (
+                    <ActivityItem
+                      key={log.id}
+                      text={
+                        activity.text
+                      }
+                      icon={
+                        activity.icon
+                      }
+                      time={new Date(
+                        log.created_at
+                      ).toLocaleString()}
+                      color={
+                        activity.color
+                      }
+                    />
+                  );
+                }
+              )
+
+            ) : (
+
+              <Text
+                style={
+                  styles.noActivity
+                }
+              >
+                No recent activity
+              </Text>
+
+            )}
+
+          </View>
 
         </View>
 
@@ -793,12 +826,19 @@ export default function AdminDashboardScreen() {
    COMPONENTS
 ====================================================== */
 
-
-function SummaryItem({ label, value }: any) {
+function SummaryItem({
+  label,
+  value,
+}: any) {
   return (
     <View style={styles.summaryItemCard}>
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>
+        {value}
+      </Text>
+
+      <Text style={styles.summaryLabel}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -1081,7 +1121,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG,
-    paddingHorizontal: 16,
+  },
+
+  contentWrapper: {
+    width: "100%",
+    maxWidth: 1320,
+    paddingHorizontal: IS_WEB_LAYOUT
+      ? 28
+      : 16,
     paddingTop: 18,
   },
 
@@ -1100,6 +1147,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     marginBottom: 18,
+    alignItems: "flex-start",
   },
 
   brand: {
@@ -1109,7 +1157,7 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    fontSize: 24,
+    fontSize: IS_TABLET ? 32 : 24,
     fontWeight: "800",
     color: TEXT_DARK,
   },
@@ -1117,7 +1165,8 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     marginTop: 6,
     color: TEXT_MED,
-    lineHeight: 20,
+    lineHeight: 22,
+    maxWidth: 600,
   },
 
   headerActions: {
@@ -1169,17 +1218,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     color: "#92400E",
     fontWeight: "700",
-  },
-
-  summaryItem: {
-    alignItems: "center",
     flex: 1,
-  },
-
-  summaryDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: "#E5E7EB",
   },
 
   sectionTitle: {
@@ -1189,48 +1228,86 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
+  summaryCard: {
+    flexDirection: "row",
+    marginBottom: 24,
+    marginHorizontal: -6,
+  },
+
+  summaryItemCard: {
+    flex: 1,
+    backgroundColor: CARD_BG,
+    borderRadius: 16,
+    paddingVertical: IS_TABLET ? 18 : 14,
+    paddingHorizontal: 10,
+    marginHorizontal: 6,
+    alignItems: "center",
+    ...cardShadow,
+  },
+
+  summaryValue: {
+    fontSize: IS_TABLET ? 28 : 22,
+    fontWeight: "800",
+    color: TEXT_DARK,
+  },
+
+  summaryLabel: {
+    marginTop: 4,
+    color: TEXT_MED,
+    fontSize: 12,
+  },
+
   statsGrid: {
-  flexDirection: "row",
-  flexWrap: "wrap",
-  marginBottom: 12,
-  marginHorizontal: -4,
-},
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
+    marginBottom: 18,
+  },
+
+  gridItem: {
+    width: IS_WEB_LAYOUT
+      ? "25%"
+      : IS_TABLET
+      ? "50%"
+      : "50%",
+    paddingHorizontal: 6,
+    marginBottom: 12,
+  },
 
   dashboardCard: {
-    width: 165,
     backgroundColor: CARD_BG,
     borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
+    padding: IS_TABLET ? 20 : 16,
+    minHeight: 150,
     ...cardShadow,
   },
 
   dashboardIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
 
   dashboardTitle: {
-    marginTop: 12,
+    marginTop: 14,
     color: TEXT_MED,
-    fontSize: 12,
+    fontSize: 13,
   },
 
   dashboardValue: {
-    fontSize: 24,
+    fontSize: IS_TABLET ? 30 : 24,
     fontWeight: "800",
     color: TEXT_DARK,
-    marginTop: 5,
+    marginTop: 6,
   },
 
   dashboardSub: {
     marginTop: 6,
     color: PRIMARY,
     fontWeight: "700",
-    fontSize: 11,
+    fontSize: 12,
   },
 
   sectionHeader: {
@@ -1252,12 +1329,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  quickActionsContainer: {
+    flexDirection: "row",
+    flexWrap: IS_WEB_LAYOUT
+      ? "wrap"
+      : "nowrap",
+  },
+
   quickActionCard: {
-    width: 170,
+    width: IS_WEB_LAYOUT
+      ? 250
+      : 170,
     backgroundColor: CARD_BG,
     borderRadius: 18,
     padding: 16,
     marginRight: 12,
+    marginBottom: 12,
     ...cardShadow,
   },
 
@@ -1292,8 +1379,8 @@ const styles = StyleSheet.create({
   },
 
   queueImage: {
-    width: 78,
-    height: 78,
+    width: IS_TABLET ? 110 : 78,
+    height: IS_TABLET ? 110 : 78,
     borderRadius: 14,
     marginRight: 12,
   },
@@ -1441,34 +1528,4 @@ const styles = StyleSheet.create({
     color: TEXT_MED,
     fontSize: 12,
   },
-  summaryCard: {
-  backgroundColor: "transparent",
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 22,
-},
-
-summaryItemCard: {
-  flex: 1,
-  backgroundColor: CARD_BG,
-  borderRadius: 16,
-  paddingVertical: 14,
-  paddingHorizontal: 10,
-  marginHorizontal: 4,
-  alignItems: "center",
-  ...cardShadow,
-},
-
-summaryValue: {
-  fontSize: 22,
-  fontWeight: "800",
-  color: TEXT_DARK,
-},
-
-summaryLabel: {
-  marginTop: 4,
-  color: TEXT_MED,
-  fontSize: 12,
-},
 });
