@@ -33,23 +33,7 @@ export default function AdminSettingsScreen() {
 
             <TouchableOpacity style={styles.item}>
                 <Text style={styles.itemText}>
-                    Listing Moderation
-                </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.item}>
-                <Text style={styles.itemText}>
                     Verification Rules
-                </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.sectionTitle}>
-                Security
-            </Text>
-
-            <TouchableOpacity style={styles.logoutButton}>
-                <Text style={styles.logoutText}>
-                    Logout
                 </Text>
             </TouchableOpacity>
         </ScrollView>

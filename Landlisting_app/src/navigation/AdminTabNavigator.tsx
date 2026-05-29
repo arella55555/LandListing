@@ -33,19 +33,28 @@ export default function AdminTabNavigator() {
         tabBarActiveTintColor: "#3B82F6",
         tabBarInactiveTintColor: "#94A3B8",
 
-        tabBarIcon: ({ color, size }) => {
-          const tab = ADMIN_TABS.find(
-            (t) => t.name === route.name
-          );
+        tabBarIcon: ({ color, size, focused }) => {
+  const tab = ADMIN_TABS.find(
+    (t) => t.name === route.name
+  );
 
-          return (
-            <Ionicons
-              name={tab?.icon as any}
-              size={22}
-              color={color}
-            />
-          );
-        },
+  // 👇 override ONLY More tab icon
+  let iconName = tab?.icon as any;
+
+  if (route.name === "More") {
+    iconName = focused
+      ? "settings"
+      : "settings-outline";
+  }
+
+  return (
+    <Ionicons
+      name={iconName}
+      size={22}
+      color={color}
+    />
+  );
+},
       })}
     >
       {ADMIN_TABS.map((tab) => (
