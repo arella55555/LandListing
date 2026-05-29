@@ -90,7 +90,7 @@ export async function migrate() {
         listing_id          UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
         buyer_id            UUID NOT NULL REFERENCES users(id),
         seller_id           UUID NOT NULL REFERENCES users(id),
-        asking_price        NUMERIC(15,2) NOT NULL,
+        asking_price        NUMERIC(15,2),
         final_price         NUMERIC(15,2),
         status              VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open','accepted','rejected','withdrawn','completed')),
         created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -155,6 +155,13 @@ export async function migrate() {
         created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
     `);
+
+    // Ensure asking_price is nullable for existing databases so chat-only channels can be created
+    try {
+      await pool.query(`ALTER TABLE negotiations ALTER COLUMN asking_price DROP NOT NULL;`);
+    } catch (e) {
+      // ignore if table doesn't exist yet or DB doesn't support the change
+    }
 
     console.log("Migration successful");
   } catch (err) {

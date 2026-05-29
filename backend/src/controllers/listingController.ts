@@ -76,7 +76,7 @@ export const createListing = async (req: Request, res: Response) => {
       [
         seller_id, category_id, title, description, price, area_sqm,
         latitude, longitude, barangay, municipality, province,
-        title_status || 'other', listing_type || 'sale', status || 'pending', negotiable ?? true
+        title_status || 'other', listing_type || 'sale', status || 'active', negotiable ?? true
       ]
     );
 

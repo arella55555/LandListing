@@ -112,23 +112,13 @@ export default function LoginScreen() {
     }
   };
 
-  const handleClearSession = async () => {
-    try {
-      await AsyncStorage.multiRemove(['token', 'userId', 'userRole']);
-      setIsLogin(true);
-      Alert.alert('Session cleared', 'Saved login state was removed.');
-    } catch (error) {
-      Alert.alert('Error', 'Could not clear saved session.');
-    }
-  };
-
   return (
     <ScrollView
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <Text style={styles.title}>LandListing</Text>
+        <Text style={styles.title}>Lupa.ph</Text>
         <Text style={styles.subtitle}>
           {isLogin ? "Welcome Back" : "Create Account"}
         </Text>
@@ -226,9 +216,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.clearButton} onPress={handleClearSession} disabled={loading}>
-          <Text style={styles.clearButtonText}>Clear saved session</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Toggle Login/Signup */}
@@ -249,7 +236,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#ecfdf5",
     padding: 20,
     justifyContent: "center",
   },
@@ -260,12 +247,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#2c3e50",
+    color: "#15803d",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: "#7f8c8d",
+    color: "#4b5563",
   },
   form: {
     backgroundColor: "#fff",
@@ -284,7 +271,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#2c3e50",
+    color: "#14532d",
     marginBottom: 8,
   },
   roleRow: {
@@ -294,7 +281,7 @@ const styles = StyleSheet.create({
   roleButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#bdc3c7",
+    borderColor: "#86efac",
     borderRadius: 8,
     paddingVertical: 10,
     marginRight: 8,
@@ -302,12 +289,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   roleButtonSelected: {
-    backgroundColor: "#3498db",
-    borderColor: "#2980b9",
+    backgroundColor: "#16a34a",
+    borderColor: "#15803d",
   },
   roleButtonText: {
     fontSize: 14,
-    color: "#2c3e50",
+    color: "#14532d",
     fontWeight: "600",
   },
   roleButtonTextSelected: {
@@ -315,15 +302,15 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#bdc3c7",
+    borderColor: "#bbf7d0",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#2c3e50",
+    color: "#14532d",
   },
   button: {
-    backgroundColor: "#3498db",
+    backgroundColor: "#16a34a",
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
@@ -338,24 +325,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   forgotPassword: {
-    color: "#3498db",
+    color: "#16a34a",
     fontSize: 14,
     marginTop: 12,
     textAlign: "center",
-  },
-  clearButton: {
-    marginTop: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-  },
-  clearButtonText: {
-    color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '600',
   },
   footer: {
     flexDirection: "row",
@@ -367,7 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   toggleText: {
-    color: "#3498db",
+    color: "#16a34a",
     fontSize: 14,
     fontWeight: "600",
   },

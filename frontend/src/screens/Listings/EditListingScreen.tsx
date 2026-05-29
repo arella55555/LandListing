@@ -40,6 +40,10 @@ const TITLE_STATUSES = [
   { value: 'TCT', label: 'TCT' }, { value: 'OCT', label: 'OCT' },
   { value: 'tax_dec', label: 'Tax Dec' }, { value: 'other', label: 'Other' },
 ];
+const LISTING_STATUSES = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'active', label: 'Active' },
+];
 
 interface FormState {
   title: string; description: string; price: string; area_sqm: string;
@@ -48,6 +52,7 @@ interface FormState {
   listing_type: 'sale' | 'rent' | 'lease';
   title_status: 'TCT' | 'OCT' | 'tax_dec' | 'other';
   negotiable: boolean; image_urls: string[]; imageInput: string;
+  status: 'pending' | 'active';
 }
 
 const EMPTY_FORM: FormState = {
@@ -55,6 +60,7 @@ const EMPTY_FORM: FormState = {
   barangay: '', municipality: '', province: '',
   latitude: '', longitude: '', category_id: 1,
   listing_type: 'sale', title_status: 'TCT',
+  status: 'pending',
   negotiable: true, image_urls: [], imageInput: '',
 };
 
@@ -71,6 +77,7 @@ function listingToForm(listing: Listing): FormState {
     longitude:    listing.longitude    ? String(listing.longitude) : '',
     category_id:  listing.category_id  ?? 1,
     listing_type: listing.listing_type ?? 'sale',
+    status:       listing.status === 'active' ? 'active' : 'pending',
     title_status: listing.title_status ?? 'TCT',
     negotiable:   listing.negotiable   ?? true,
     image_urls:   listing.images?.map(i => i.image_url)
@@ -198,6 +205,7 @@ export default function EditListingScreen() {
         barangay: form.barangay.trim() || undefined,
         municipality: form.municipality.trim(), province: form.province.trim(),
         title_status: form.title_status, listing_type: form.listing_type,
+        status: form.status,
         negotiable: form.negotiable, image_urls: form.image_urls,
       };
       const result = await updateListing(listing.id, payload);
@@ -325,6 +333,21 @@ export default function EditListingScreen() {
               ))}
             </View>
           </Field>
+
+          <Field label="Listing Status">
+            <View style={styles.chipRow}>
+              {LISTING_STATUSES.map(s => (
+                <TouchableOpacity key={s.value}
+                  style={[styles.selChip, form.status === s.value && styles.selChipActive]}
+                  onPress={() => set('status', s.value as any)}>
+                  <Text style={[styles.selChipText, form.status === s.value && styles.selChipTextActive]}>
+                    {s.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Field>
+
           <Field label="Title Status">
             <View style={styles.chipRow}>
               {TITLE_STATUSES.map(t => (

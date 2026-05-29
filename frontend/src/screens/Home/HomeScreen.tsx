@@ -18,6 +18,11 @@ import { Listing } from '../../services/listingService';
 import BuyerTabBar from '../../components/BuyerTabBar';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80';
+const PRIMARY = '#16a34a';
+const PRIMARY_DARK = '#15803d';
+const PRIMARY_LIGHT = '#dcfce7';
+const SURFACE = '#f0fdf4';
+const BORDER = '#bbf7d0';
 const UNDER_PHP_THRESHOLD = 300_000;
 const OVER_PHP_THRESHOLD = 600_000;
 const CATEGORY_IDS: Record<Exclude<HomeFilterState['propertyType'], 'all'>, number> = {
@@ -102,7 +107,7 @@ const HomeScreen: React.FC = () => {
   if (loading && previewListings.length === 0) {
     return (
       <View style={styles.centerState}>
-        <ActivityIndicator size="large" color="#0F766E" />
+        <ActivityIndicator size="large" color={PRIMARY} />
         <Text style={styles.stateText}>Loading listings...</Text>
       </View>
     );
@@ -192,7 +197,7 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: SURFACE,
   },
   topBar: {
     flexDirection: 'row',
@@ -203,19 +208,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: BORDER,
   },
   topBarLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F766E',
+    color: PRIMARY_DARK,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   topBarTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#14532d',
     marginTop: 2,
   },
   listContent: {
@@ -230,12 +235,12 @@ const styles = StyleSheet.create({
   logoutButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: PRIMARY_LIGHT,
     borderRadius: 10,
     alignSelf: 'flex-start',
   },
   logoutText: {
-    color: '#B91C1C',
+    color: PRIMARY_DARK,
     fontWeight: '700',
   },
   heroCopy: {
@@ -244,7 +249,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#0F766E',
+    color: PRIMARY_DARK,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -252,14 +257,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#14532d',
     lineHeight: 34,
     marginBottom: 10,
   },
   description: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#475569',
+    color: '#4b5563',
   },
   filterCard: {
     marginTop: 4,
@@ -278,17 +283,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: BORDER,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#14532d',
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#475569',
+    color: '#4b5563',
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -297,23 +302,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: SURFACE,
   },
   stateTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#14532d',
     marginBottom: 8,
   },
   stateText: {
     fontSize: 14,
-    color: '#475569',
+    color: '#4b5563',
     textAlign: 'center',
     marginTop: 10,
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#0F766E',
+    backgroundColor: PRIMARY,
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 14,

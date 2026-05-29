@@ -6,8 +6,8 @@ export const createNegotiation = async (req: Request, res: Response) => {
     const buyer_id = req.user?.id; 
     const { listing_id, asking_price } = req.body;
 
-    if (!listing_id || !asking_price) {
-      return res.status(400).json({ message: "Listing ID and asking price are required." });
+    if (!listing_id) {
+      return res.status(400).json({ message: "Listing ID is required." });
     }
 
     const listingCheck = await pool.query(
@@ -21,8 +21,10 @@ export const createNegotiation = async (req: Request, res: Response) => {
 
     const listing = listingCheck.rows[0];
 
-    if (!listing.negotiable || listing.status !== 'active') {
-      return res.status(400).json({ message: "This listing is closed for negotiations or inactive." });
+    // Allow opening a conversation channel even if the listing is not negotiable.
+    // Only block if listing is inactive.
+    if (listing.status !== 'active') {
+      return res.status(400).json({ message: "This listing is inactive and cannot be contacted." });
     }
 
     if (listing.seller_id === buyer_id) {
@@ -33,7 +35,7 @@ export const createNegotiation = async (req: Request, res: Response) => {
       `INSERT INTO negotiations (listing_id, buyer_id, seller_id, asking_price, status) 
        VALUES ($1, $2, $3, $4, 'open') 
        RETURNING *`,
-      [listing_id, buyer_id, listing.seller_id, asking_price]
+      [listing_id, buyer_id, listing.seller_id, asking_price || null]
     );
 
     res.status(201).json({ message: "Negotiation channel opened.", negotiation: result.rows[0] });

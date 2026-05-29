@@ -25,6 +25,22 @@ API.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Surface backend error messages so components can show user-friendly text
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    try {
+      const serverMessage = error?.response?.data?.message;
+      if (serverMessage) {
+        error.message = serverMessage;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return Promise.reject(error);
+  }
+);
+
 // =========================
 // Listings API
 // =========================

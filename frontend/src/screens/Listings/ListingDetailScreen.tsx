@@ -3,7 +3,7 @@
  * Uses shared useListings hook for delete + favorite.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Image,
   TouchableOpacity, SafeAreaView, StatusBar,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useListings } from '../../hooks/useListings';
 import { Listing, listingService } from '../../services/listingService';
 import ListingMap from '../../components/maps/ListingMap';
@@ -67,26 +68,40 @@ export default function ListingDetailScreen() {
 
   const isOwner = !!listing && !!currentUserId && listing.seller_id === currentUserId;
 
-  // Only fetch from API if we have NO seed data
-  useEffect(() => {
+  const loadListing = useCallback(async (showSpinner: boolean) => {
     const id = params.id as string;
-    const seedHasImages = !!seedListing && ((seedListing.images?.length ?? 0) > 0 || !!seedListing.primary_image_url);
-    if (!id || (seedListing && seedHasImages)) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await listingService.getById(id);
-        if (!cancelled) setListing(prev => ({ ...prev, ...data } as Listing));
-      } catch {
-        Alert.alert('Error', 'Could not load listing.');
-        router.back();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [params.id, params.data]);
+    if (!id) return;
+    if (showSpinner) setLoading(true);
+    try {
+      const data = await listingService.getById(id);
+      setListing(prev => ({ ...(prev ?? {}), ...data } as Listing));
+      setImageIndex(0);
+    } catch {
+      Alert.alert('Error', 'Could not load listing.');
+      router.back();
+    } finally {
+      if (showSpinner) setLoading(false);
+    }
+  }, [params.id, router]);
+
+  useEffect(() => {
+    if (!listing) {
+      loadListing(true);
+    }
+  }, [listing, loadListing]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        if (!active) return;
+        await loadListing(false);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [loadListing])
+  );
 
   const images: string[] =
     listing?.images?.map(i => i.image_url) ??
@@ -100,6 +115,14 @@ export default function ListingDetailScreen() {
     const newVal = !listing.is_favorited;
     setListing(prev => prev ? { ...prev, is_favorited: newVal } : prev);
     await toggleFavorite(listing.id);
+  };
+
+  const handleContactSeller = () => {
+    if (!listing) return;
+    router.push({
+      pathname: '/contact/[listingId]' as any,
+      params: { listingId: listing.id },
+    });
   };
 
   const confirmDelete = () => {
@@ -117,7 +140,7 @@ export default function ListingDetailScreen() {
     ]);
   };
 
-  if (loading) {
+  if (loading && !listing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={PRIMARY} />
@@ -251,7 +274,7 @@ export default function ListingDetailScreen() {
         )}
 
         {!isOwner && (
-          <TouchableOpacity style={styles.contactBtn}>
+          <TouchableOpacity style={styles.contactBtn} onPress={handleContactSeller}>
             <Text style={styles.contactBtnText}>Contact Seller</Text>
           </TouchableOpacity>
         )}
