@@ -4,9 +4,13 @@ import { AdminController } from "../controllers/adminController";
 
 import { authenticateToken } from "../middleware/authMiddleware";
 import { authorizeRoles } from "../middleware/roleMiddleware";
+import express from "express";
+import { getDashboardStats } from "../controllers/adminAnalyticsController";
+
+
+
 
 const router = Router();
-
 /**
  * AUTH + ROLE PROTECTION
  */
@@ -63,6 +67,15 @@ router.patch(
 router.patch(
   "/listings/:id/reject",
   AdminController.rejectListing
+);
+
+router.patch(
+  "/listings/:id/flag",
+  AdminController.flagListing
+);
+router.patch(
+  "/listings/:id/revert",
+  AdminController.revertListing
 );
 
 /**

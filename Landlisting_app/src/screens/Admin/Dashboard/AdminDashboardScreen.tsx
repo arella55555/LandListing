@@ -1,441 +1,832 @@
+// app/admin/dashboard.tsx
+// LUPA.PH — ADMIN DASHBOARD (FULLY FIXED)
+
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
   TouchableOpacity,
-  ActivityIndicator,
-  TextInput,
   Image,
+  ActivityIndicator,
+  StatusBar,
+  RefreshControl,
+  Alert,
 } from "react-native";
 
-import { LineChart } from "react-native-chart-kit";
+import {
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
+
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
 
-import { getDashboardStats } from "../../../services/dashboardApi";
+import {
+  getDashboardStats,
+} from "../../../services/dashboardApi";
 
-const screenWidth = Dimensions.get("window").width;
+import {
+  approveListing,
+} from "../../../services/adminService";
 
-export default function AdminDashboardScreen() {
-  const navigation = useNavigation<any>();
+/* ======================================================
+   PALETTE
+====================================================== */
 
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+const PRIMARY = "#27AE60";
+const PRIMARY_LIGHT = "#E8F8EF";
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
+const TEXT_DARK = "#111827";
+const TEXT_MED = "#6B7280";
+const TEXT_LIGHT = "#9CA3AF";
 
-  async function fetchDashboard() {
-    try {
-      const data = await getDashboardStats();
+const BG = "#F8FAFC";
+const CARD_BG = "#FFFFFF";
 
-      setStats({
-        totalUsers: data?.totalUsers ?? 2458,
-        totalListings: data?.totalListings ?? 1245,
-        pendingListings: data?.pendingListings ?? 128,
-        activeListings: data?.activeListings ?? 980,
-        reportedListings: data?.reportedListings ?? 46,
-        verifications: data?.verifications ?? 37,
-      });
-    } catch (err) {
-      console.error("Dashboard error:", err);
+const RED = "#EF4444";
+const ORANGE = "#F59E0B";
+const BLUE = "#3B82F6";
 
-      // fallback placeholders
-      setStats({
-        totalUsers: 2458,
-        totalListings: 1245,
-        pendingListings: 128,
-        activeListings: 980,
-        reportedListings: 46,
-        verifications: 37,
-      });
-    } finally {
-      setLoading(false);
-    }
+/* ======================================================
+   HELPERS
+====================================================== */
+
+const getListingImage = (item: any) => {
+  if (item?.image) {
+    return item.image;
   }
 
-  if (loading) {
+  return "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop";
+};
+
+const formatActivity = (log: any) => {
+  const action = String(
+    log?.action || ""
+  ).toLowerCase();
+
+  if (action.includes("approve")) {
+    return {
+      text: "A property listing was approved",
+      icon: "checkmark-circle-outline",
+      color: PRIMARY,
+    };
+  }
+
+  if (action.includes("reject")) {
+    return {
+      text: "A listing was rejected",
+      icon: "close-circle-outline",
+      color: RED,
+    };
+  }
+
+  if (action.includes("flag")) {
+    return {
+      text: "A listing was flagged",
+      icon: "flag-outline",
+      color: ORANGE,
+    };
+  }
+
+  if (action.includes("suspend")) {
+    return {
+      text: "A user account was suspended",
+      icon: "shield-outline",
+      color: ORANGE,
+    };
+  }
+
+  if (action.includes("seller")) {
+    return {
+      text: "A seller application was reviewed",
+      icon: "shield-checkmark-outline",
+      color: BLUE,
+    };
+  }
+
+  return {
+    text: "Marketplace activity updated",
+    icon: "pulse-outline",
+    color: PRIMARY,
+  };
+};
+
+/* ======================================================
+   SCREEN
+====================================================== */
+
+export default function AdminDashboardScreen() {
+  const navigation: any = useNavigation();
+
+  const [dashboard, setDashboard] =
+    useState<any>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [approvingId, setApprovingId] =
+    useState<string | null>(null);
+
+  /* ======================================================
+     LOAD
+  ====================================================== */
+
+  const loadDashboard = async (
+    silent = false
+  ) => {
+    try {
+      if (!silent) {
+        setLoading(true);
+      }
+
+      const data =
+        await getDashboardStats();
+
+      setDashboard({
+        stats: data?.stats || {},
+        alerts: data?.alerts || {},
+        recentListings:
+          data?.recentListings || [],
+        activity:
+          data?.activity || [],
+      });
+
+    } catch (err: any) {
+
+      console.log(
+        "Dashboard fetch error:",
+        err
+      );
+
+      Alert.alert(
+        "Error",
+        err?.message ||
+          "Failed to load dashboard"
+      );
+
+    } finally {
+
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  };
+
+  /* ======================================================
+     AUTO REFRESH
+  ====================================================== */
+
+  useEffect(() => {
+    loadDashboard();
+
+    const interval = setInterval(() => {
+      loadDashboard(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  /* ======================================================
+     REFRESH WHEN RETURNING
+  ====================================================== */
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard(true);
+    }, [])
+  );
+
+  /* ======================================================
+     APPROVE
+  ====================================================== */
+
+  const handleApprove = async (
+    listingId: string
+  ) => {
+    try {
+      setApprovingId(listingId);
+
+      await approveListing(listingId);
+
+      setDashboard((prev: any) => ({
+        ...prev,
+
+        stats: {
+          ...prev.stats,
+
+          pendingListings:
+            Math.max(
+              0,
+              (prev.stats
+                ?.pendingListings || 0) - 1
+            ),
+
+          approvedListings:
+            (prev.stats
+              ?.approvedListings || 0) + 1,
+        },
+
+        recentListings:
+          prev.recentListings.filter(
+            (x: any) =>
+              x.id !== listingId
+          ),
+      }));
+
+      Alert.alert(
+        "Success",
+        "Listing approved"
+      );
+
+    } catch (err: any) {
+
+      Alert.alert(
+        "Error",
+        err?.message ||
+          "Approval failed"
+      );
+
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  /* ======================================================
+     NAVIGATION
+  ====================================================== */
+
+  const goToListingsPending = () => {
+    navigation.navigate("Listings", {
+      filter: "pending",
+    });
+  };
+
+  const goToUsers = () => {
+    navigation.navigate("Users");
+  };
+
+  const goToReports = () => {
+    navigation.navigate("Reports");
+  };
+
+  const goToLogs = () => {
+    navigation.navigate("Logs");
+  };
+
+  /* ======================================================
+     LOADER
+  ====================================================== */
+
+  if (loading && !dashboard) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#7C3AED" />
+        <ActivityIndicator
+          size="large"
+          color={PRIMARY}
+        />
+
         <Text style={styles.loadingText}>
-          Loading admin dashboard...
+          Loading dashboard...
         </Text>
       </View>
     );
   }
 
+  const pendingListings =
+    dashboard?.stats?.pendingListings ||
+    0;
+
+  const approvedListings =
+    dashboard?.stats?.approvedListings ||
+    0;
+
+  const verifiedUsers =
+    dashboard?.stats?.verifiedUsers ||
+    0;
+
+  const activeUsers =
+    (dashboard?.stats?.totalUsers ||
+      0) -
+    (dashboard?.stats
+      ?.suspendedUsers || 0);
+
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.container}>
+      <StatusBar
+        backgroundColor={BG}
+        barStyle="dark-content"
+      />
 
-      {/* ================= HEADER ================= */}
+      <ScrollView
+        showsVerticalScrollIndicator={
+          false
+        }
+        contentContainerStyle={{
+          paddingBottom: 120,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
 
-      <View style={styles.topBar}>
-        <View>
-          <Text style={styles.greeting}>
-            Good morning, Admin 👋
-          </Text>
+              setRefreshing(true);
 
-          <Text style={styles.subtitle}>
-            Heres whats happening on LandListing today.
-          </Text>
-        </View>
+              await loadDashboard(true);
 
-        <View style={styles.topActions}>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons
-              name="notifications-outline"
-              size={24}
-              color="#334155"
+              setRefreshing(false);
+            }}
+          />
+        }
+      >
+
+        {/* HEADER */}
+
+        <View style={styles.header}>
+
+          <View style={{ flex: 1 }}>
+
+            <Text style={styles.brand}>
+              Lupa.ph Admin
+            </Text>
+
+            <Text style={styles.headerTitle}>
+              Dashboard
+            </Text>
+
+            <Text
+              style={
+                styles.headerSubtitle
+              }
+            >
+              Monitor listings,
+              users, reports and
+              moderation.
+            </Text>
+
+          </View>
+
+          <View
+            style={styles.headerActions}
+          >
+
+            <TouchableOpacity
+              style={
+                styles.notificationButton
+              }
+              onPress={
+                goToListingsPending
+              }
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={22}
+                color={TEXT_DARK}
+              />
+
+              {pendingListings > 0 && (
+                <View
+                  style={
+                    styles.notificationBadge
+                  }
+                >
+                  <Text
+                    style={
+                      styles.notificationText
+                    }
+                  >
+                    {pendingListings}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <Image
+              source={{
+                uri: "https://i.pravatar.cc/100",
+              }}
+              style={styles.avatar}
             />
 
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>3</Text>
-            </View>
+          </View>
+
+        </View>
+
+        {/* PRIORITY */}
+
+        {pendingListings > 0 && (
+          <TouchableOpacity
+            style={styles.priorityBar}
+            activeOpacity={0.9}
+            onPress={
+              goToListingsPending
+            }
+          >
+
+            <Ionicons
+              name="warning-outline"
+              size={18}
+              color="#92400E"
+            />
+
+            <Text
+              style={
+                styles.priorityText
+              }
+            >
+              {pendingListings}{" "}
+              listings awaiting
+              approval
+            </Text>
+
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color="#92400E"
+              style={{
+                marginLeft: "auto",
+              }}
+            />
+
+          </TouchableOpacity>
+        )}
+
+        {/* SUMMARY */}
+
+        <View style={styles.summaryCard}>
+  <SummaryItem label="Pending" value={pendingListings} />
+  <SummaryItem label="Approved" value={approvedListings} />
+  <SummaryItem label="Verified" value={verifiedUsers} />
+</View>
+
+        {/* OVERVIEW */}
+
+        <Text style={styles.sectionTitle}>
+          Marketplace Overview
+        </Text>
+
+        <View style={styles.statsGrid}>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={
+              goToListingsPending
+            }
+          >
+            <DashboardCard
+              title="Pending"
+              value={pendingListings}
+              subtitle="Listings"
+              icon="document-text-outline"
+              color={ORANGE}
+            />
           </TouchableOpacity>
 
-          <Image
-            source={{
-              uri: "https://i.pravatar.cc/100",
-            }}
-            style={styles.avatar}
-          />
-        </View>
-      </View>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={goToReports}
+          >
+            <DashboardCard
+              title="Reports"
+              value={
+                dashboard?.alerts
+                  ?.openReports || 0
+              }
+              subtitle="Open cases"
+              icon="flag-outline"
+              color={RED}
+            />
+          </TouchableOpacity>
 
-      {/* ================= SEARCH ================= */}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={goToUsers}
+          >
+            <DashboardCard
+              title="Verified"
+              value={verifiedUsers}
+              subtitle="Trusted users"
+              icon="shield-checkmark-outline"
+              color={PRIMARY}
+            />
+          </TouchableOpacity>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputWrapper}>
-          <Ionicons
-            name="search-outline"
-            size={20}
-            color="#94A3B8"
-          />
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={goToUsers}
+          >
+            <DashboardCard
+              title="Active"
+              value={activeUsers}
+              subtitle="Marketplace users"
+              icon="people-outline"
+              color={BLUE}
+            />
+          </TouchableOpacity>
 
-          <TextInput
-            placeholder="Search anything..."
-            placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons
-            name="options-outline"
-            size={20}
-            color="#475569"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* ================= KPI ================= */}
-
-      <View style={styles.statsGrid}>
-        <DashboardCard
-          title="Pending Listings"
-          value={stats.pendingListings}
-          growth="+12.5%"
-          icon="document-text-outline"
-          color="#8B5CF6"
-        />
-
-        <DashboardCard
-          title="Open Reports"
-          value={stats.reportedListings}
-          growth="+8.3%"
-          icon="flag-outline"
-          color="#EF4444"
-        />
-
-        <DashboardCard
-          title="Verifications"
-          value={stats.verifications}
-          growth="+11.3%"
-          icon="shield-checkmark-outline"
-          color="#22C55E"
-        />
-
-        <DashboardCard
-          title="Active Users"
-          value={stats.totalUsers}
-          growth="+7.6%"
-          icon="people-outline"
-          color="#3B82F6"
-        />
-      </View>
-
-      {/* ================= TASKS ================= */}
-
-      <SectionHeader
-        title="Tasks Requiring Your Action"
-        action="View all"
-      />
-
-      <View style={styles.card}>
-        <View style={styles.tabs}>
-          <TabButton label={`Listings (${stats.pendingListings})`} active />
-          <TabButton label={`Reports (${stats.reportedListings})`} />
-          <TabButton label={`Verifications (${stats.verifications})`} />
         </View>
 
-        <ListingItem
-          title="Green Valley Estate"
-          location="Lagos, Nigeria"
-          author="John Doe"
-          price="₦45,000,000"
-          status="Pending"
-        />
+        {/* MODERATION */}
 
-        <ListingItem
-          title="Ocean View Land"
-          location="Lekki, Lagos"
-          author="Jane Smith"
-          price="₦80,000,000"
-          status="Pending"
-        />
+        <View style={styles.sectionHeader}>
 
-        <ListingItem
-          title="City Center Plot"
-          location="Abuja, FCT"
-          author="Mike Brown"
-          price="₦120,000,000"
-          status="Pending"
-        />
-
-        <TouchableOpacity style={styles.reviewButton}>
-          <Text style={styles.reviewButtonText}>
-            Review All Pending Listings
+          <Text
+            style={
+              styles.sectionHeaderTitle
+            }
+          >
+            Moderation Queue
           </Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* ================= QUICK ACTIONS ================= */}
+          <TouchableOpacity
+            onPress={
+              goToListingsPending
+            }
+          >
+            <Text
+              style={
+                styles.sectionAction
+              }
+            >
+              View all
+            </Text>
+          </TouchableOpacity>
 
-      <Text style={styles.sectionTitle}>
-        Quick Actions
-      </Text>
+        </View>
 
-      <View style={styles.quickActions}>
-        <QuickAction
-          label="Review Listings"
-          sub="128 pending"
-          icon="document-text-outline"
-          color="#8B5CF6"
-          onPress={() => navigation.navigate("Listings")}
-        />
+        {dashboard?.recentListings
+          ?.length ? (
 
-        <QuickAction
-          label="Review Reports"
-          sub="46 open"
-          icon="flag-outline"
-          color="#EF4444"
-          onPress={() => navigation.navigate("Reports")}
-        />
+          dashboard.recentListings
+            .slice(0, 4)
+            .map((item: any) => {
 
-        <QuickAction
-          label="Verify Docs"
-          sub="37 pending"
-          icon="shield-checkmark-outline"
-          color="#22C55E"
-          onPress={() => navigation.navigate("Verify")}
-        />
+              const location =
+                [
+                  item?.barangay,
+                  item?.municipality,
+                  item?.province,
+                ]
+                  .filter(Boolean)
+                  .join(", ");
 
-        <QuickAction
-          label="Manage Admins"
-          sub="Admin control"
-          icon="people-outline"
-          color="#3B82F6"
-          onPress={() => navigation.navigate("Users")}
-        />
-      </View>
+              return (
+                <ModerationCard
+                  key={item.id}
+                  title={item.title}
+                  price={`₱${Number(
+                    item.price || 0
+                  ).toLocaleString()}`}
+                  location={
+                    location ||
+                    "Location unavailable"
+                  }
+                  seller={
+                    item.seller_name ||
+                    "Unknown Seller"
+                  }
+                  image={getListingImage(
+                    item
+                  )}
+                  loading={
+                    approvingId ===
+                    item.id
+                  }
+                  onApprove={() =>
+                    handleApprove(
+                      item.id
+                    )
+                  }
+                  onReview={() =>
+                    navigation.navigate(
+                      "ListingDetails",
+                      {
+                        listing:
+                          item,
+                      }
+                    )
+                  }
+                />
+              );
+            })
 
-      {/* ================= PRIORITY ALERTS ================= */}
+        ) : (
 
-      <SectionHeader
-        title="Priority Alerts"
-        action="View all"
-      />
+          <View style={styles.emptyCard}>
 
-      <View style={styles.alertGrid}>
-        <AlertCard
-          title="High Priority Reports"
-          count="12"
-          icon="flag"
-          color="#EF4444"
-        />
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={34}
+              color={PRIMARY}
+            />
 
-        <AlertCard
-          title="Flagged Listings"
-          count="8"
-          icon="warning"
-          color="#F59E0B"
-        />
+            <Text
+              style={styles.emptyTitle}
+            >
+              Moderation queue is
+              clear
+            </Text>
 
-        <AlertCard
-          title="High Risk Accounts"
-          count="5"
-          icon="people"
-          color="#8B5CF6"
-        />
+            <Text
+              style={styles.emptySub}
+            >
+              No pending listings
+              right now
+            </Text>
 
-        <AlertCard
-          title="SLA Breaches"
-          count="3"
-          icon="time"
-          color="#3B82F6"
-        />
-      </View>
+          </View>
 
-      {/* ================= RECENT ACTIVITY ================= */}
+        )}
 
-      <SectionHeader
-        title="Recent Activity"
-        action="View all"
-      />
+        {/* QUICK ACTIONS */}
 
-      <View style={styles.card}>
-        <ActivityItem
-          text="You approved a listing"
-          sub="Green Valley Estate (ID: #L1245)"
-          icon="checkmark-circle"
-          color="#22C55E"
-          time="2m ago"
-        />
+        <View style={styles.sectionHeader}>
 
-        <ActivityItem
-          text="You resolved a report"
-          sub="Inappropriate Content (ID: #R2031)"
-          icon="flag"
-          color="#EF4444"
-          time="15m ago"
-        />
+          <Text
+            style={
+              styles.sectionHeaderTitle
+            }
+          >
+            Quick Actions
+          </Text>
 
-        <ActivityItem
-          text="You approved verification"
-          sub="Jane Smith - ID Card"
-          icon="shield-checkmark"
-          color="#8B5CF6"
-          time="1h ago"
-        />
+        </View>
 
-        <ActivityItem
-          text="You suspended a user"
-          sub="Mike Johnson (ID: #U1023)"
-          icon="person-remove"
-          color="#F59E0B"
-          time="2h ago"
-        />
-      </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={
+            false
+          }
+          contentContainerStyle={{
+            paddingRight: 10,
+          }}
+          style={{
+            marginBottom: 24,
+          }}
+        >
 
-      {/* ================= ANALYTICS ================= */}
+          <QuickAction
+            title="Review Listings"
+            subtitle="Pending queue"
+            icon="document-text-outline"
+            color={PRIMARY}
+            onPress={
+              goToListingsPending
+            }
+          />
 
-      <SectionHeader
-        title="Analytics Overview"
-        action="This Week"
-      />
+          <QuickAction
+            title="Reports"
+            subtitle="User complaints"
+            icon="flag-outline"
+            color={RED}
+            onPress={goToReports}
+          />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 16 }}
-      >
+          <QuickAction
+            title="Manage Users"
+            subtitle="Accounts"
+            icon="people-outline"
+            color={BLUE}
+            onPress={goToUsers}
+          />
 
-        <AnalyticsCard
-          title="Listings"
-          value="1,245"
-          growth="+9.7%"
-          color="#8B5CF6"
-          data={[20, 45, 28, 80, 99, 43, 50]}
-        />
+          <QuickAction
+            title="Logs"
+            subtitle="Admin activity"
+            icon="reader-outline"
+            color={ORANGE}
+            onPress={goToLogs}
+          />
 
-        <AnalyticsCard
-          title="Reports"
-          value="246"
-          growth="+6.3%"
-          color="#EF4444"
-          data={[10, 20, 15, 30, 45, 35, 40]}
-        />
+        </ScrollView>
 
-        <AnalyticsCard
-          title="Verifications"
-          value="337"
-          growth="+14.1%"
-          color="#22C55E"
-          data={[15, 35, 25, 50, 40, 55, 60]}
-        />
+        {/* ACTIVITY */}
 
-        <AnalyticsCard
-          title="New Users"
-          value="158"
-          growth="+8.2%"
-          color="#3B82F6"
-          data={[5, 15, 12, 30, 25, 40, 35]}
-        />
+        <View style={styles.sectionHeader}>
+
+          <Text
+            style={
+              styles.sectionHeaderTitle
+            }
+          >
+            Recent Activity
+          </Text>
+
+          <TouchableOpacity
+            onPress={() =>
+              loadDashboard(true)
+            }
+          >
+            <Text
+              style={
+                styles.sectionAction
+              }
+            >
+              Refresh
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+
+        <View style={styles.logsCard}>
+
+          {dashboard?.activity
+            ?.length ? (
+
+            dashboard.activity.map(
+              (log: any) => {
+
+                const activity =
+                  formatActivity(
+                    log
+                  );
+
+                return (
+                  <ActivityItem
+                    key={log.id}
+                    text={
+                      activity.text
+                    }
+                    icon={
+                      activity.icon
+                    }
+                    time={new Date(
+                      log.created_at
+                    ).toLocaleString()}
+                    color={
+                      activity.color
+                    }
+                  />
+                );
+              }
+            )
+
+          ) : (
+
+            <Text
+              style={
+                styles.noActivity
+              }
+            >
+              No recent activity
+            </Text>
+
+          )}
+
+        </View>
+
       </ScrollView>
-
-      {/* ================= RECENT LISTINGS ================= */}
-
-      <SectionHeader
-        title="Recent Listings"
-        action="View all"
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 100 }}
-      >
-
-        <RecentListingCard
-          title="Sunset Farmland"
-          location="Ibadan, Oyo"
-          price="₦60,000,000"
-        />
-
-        <RecentListingCard
-          title="Hilltop Estate"
-          location="Enugu"
-          price="₦35,000,000"
-        />
-
-        <RecentListingCard
-          title="Lakeside Plot"
-          location="Port Harcourt"
-          price="₦80,000,000"
-        />
-      </ScrollView>
-    </ScrollView>
+    </View>
   );
 }
 
-/* =========================================================
- COMPONENTS
-========================================================= */
+/* ======================================================
+   COMPONENTS
+====================================================== */
+
+
+function SummaryItem({ label, value }: any) {
+  return (
+    <View style={styles.summaryItemCard}>
+      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={styles.summaryLabel}>{label}</Text>
+    </View>
+  );
+}
 
 function DashboardCard({
   title,
   value,
-  growth,
+  subtitle,
   icon,
   color,
 }: any) {
   return (
     <View style={styles.dashboardCard}>
+
       <View
         style={[
           styles.dashboardIcon,
-          { backgroundColor: `${color}15` },
+          {
+            backgroundColor:
+              `${color}15`,
+          },
         ]}
       >
-        <Ionicons name={icon} size={22} color={color} />
+        <Ionicons
+          name={icon}
+          size={20}
+          color={color}
+        />
       </View>
 
       <Text style={styles.dashboardTitle}>
@@ -446,104 +837,17 @@ function DashboardCard({
         {value}
       </Text>
 
-      <Text style={styles.dashboardGrowth}>
-        ↗ {growth} vs yesterday
+      <Text style={styles.dashboardSub}>
+        {subtitle}
       </Text>
+
     </View>
-  );
-}
-
-function SectionHeader({ title, action }: any) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionHeaderTitle}>
-        {title}
-      </Text>
-
-      <TouchableOpacity>
-        <Text style={styles.sectionAction}>
-          {action}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function TabButton({ label, active }: any) {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.tabButton,
-        active && styles.activeTab,
-      ]}
-    >
-      <Text
-        style={[
-          styles.tabText,
-          active && styles.activeTabText,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function ListingItem({
-  title,
-  location,
-  author,
-  price,
-  status,
-}: any) {
-  return (
-    <TouchableOpacity style={styles.listingItem}>
-      <Image
-        source={{
-          uri: "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-        }}
-        style={styles.listingImage}
-      />
-
-      <View style={{ flex: 1 }}>
-        <Text style={styles.listingTitle}>
-          {title}
-        </Text>
-
-        <Text style={styles.listingLocation}>
-          {location}
-        </Text>
-
-        <Text style={styles.listingMeta}>
-          By {author}
-        </Text>
-
-        <Text style={styles.listingPrice}>
-          {price}
-        </Text>
-      </View>
-
-      <View style={{ alignItems: "flex-end" }}>
-        <View style={styles.pendingBadge}>
-          <Text style={styles.pendingText}>
-            {status}
-          </Text>
-        </View>
-
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color="#94A3B8"
-          style={{ marginTop: 14 }}
-        />
-      </View>
-    </TouchableOpacity>
   );
 }
 
 function QuickAction({
-  label,
-  sub,
+  title,
+  subtitle,
   icon,
   color,
   onPress,
@@ -552,246 +856,291 @@ function QuickAction({
     <TouchableOpacity
       style={styles.quickActionCard}
       onPress={onPress}
+      activeOpacity={0.9}
     >
+
       <View
         style={[
-          styles.quickActionIcon,
-          { backgroundColor: `${color}15` },
+          styles.quickIcon,
+          {
+            backgroundColor:
+              `${color}15`,
+          },
         ]}
       >
-        <Ionicons name={icon} size={20} color={color} />
+        <Ionicons
+          name={icon}
+          size={20}
+          color={color}
+        />
       </View>
 
-      <Text style={styles.quickActionLabel}>
-        {label}
+      <Text style={styles.quickTitle}>
+        {title}
       </Text>
 
-      <Text style={styles.quickActionSub}>
-        {sub}
+      <Text
+        style={styles.quickSubtitle}
+      >
+        {subtitle}
       </Text>
+
     </TouchableOpacity>
   );
 }
 
-function AlertCard({
+function ModerationCard({
   title,
-  count,
-  icon,
-  color,
+  location,
+  seller,
+  price,
+  image,
+  onApprove,
+  onReview,
+  loading,
 }: any) {
   return (
-    <View style={styles.alertCard}>
-      <View
-        style={[
-          styles.alertIcon,
-          { backgroundColor: `${color}15` },
-        ]}
-      >
-        <Ionicons name={icon} size={18} color={color} />
+    <TouchableOpacity
+      style={styles.queueCard}
+      activeOpacity={0.92}
+      onPress={onReview}
+    >
+
+      <Image
+        source={{ uri: image }}
+        style={styles.queueImage}
+      />
+
+      <View style={{ flex: 1 }}>
+
+        <View style={styles.queueTop}>
+
+          <View
+            style={styles.statusBadge}
+          >
+            <Text
+              style={
+                styles.statusText
+              }
+            >
+              Pending
+            </Text>
+          </View>
+
+        </View>
+
+        <Text
+          numberOfLines={1}
+          style={styles.queueTitle}
+        >
+          {title}
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          style={
+            styles.queueLocation
+          }
+        >
+          ⊙ {location}
+        </Text>
+
+        <Text
+          numberOfLines={1}
+          style={styles.queueSeller}
+        >
+          Seller: {seller}
+        </Text>
+
+        <View
+          style={styles.queueFooter}
+        >
+
+          <Text
+            style={styles.queuePrice}
+          >
+            {price}
+          </Text>
+
+          <View
+            style={
+              styles.queueButtons
+            }
+          >
+
+            <TouchableOpacity
+              style={
+                styles.approveButton
+              }
+              onPress={onApprove}
+              disabled={loading}
+            >
+
+              {loading ? (
+                <ActivityIndicator
+                  color="#fff"
+                  size="small"
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.approveText
+                  }
+                >
+                  Approve
+                </Text>
+              )}
+
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={
+                styles.reviewButton
+              }
+              onPress={onReview}
+            >
+              <Ionicons
+                name="eye-outline"
+                size={16}
+                color={PRIMARY}
+              />
+            </TouchableOpacity>
+
+          </View>
+
+        </View>
+
       </View>
 
-      <Text style={styles.alertCount}>
-        {count}
-      </Text>
-
-      <Text style={styles.alertTitle}>
-        {title}
-      </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 function ActivityItem({
   text,
-  sub,
-  icon,
-  color,
   time,
+  color,
+  icon,
 }: any) {
   return (
     <View style={styles.activityItem}>
+
       <View
         style={[
           styles.activityIcon,
-          { backgroundColor: `${color}15` },
+          {
+            backgroundColor:
+              `${color}15`,
+          },
         ]}
       >
-        <Ionicons name={icon} size={18} color={color} />
+        <Ionicons
+          name={icon}
+          size={16}
+          color={color}
+        />
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.activityText}>
+
+        <Text
+          style={
+            styles.activityText
+          }
+        >
           {text}
         </Text>
 
-        <Text style={styles.activitySub}>
-          {sub}
-        </Text>
       </View>
 
       <Text style={styles.activityTime}>
         {time}
       </Text>
+
     </View>
   );
 }
 
-function AnalyticsCard({
-  title,
-  value,
-  growth,
-  data,
-  color,
-}: any) {
-  return (
-    <View style={styles.analyticsCard}>
-      <Text style={styles.analyticsTitle}>
-        {title}
-      </Text>
+/* ======================================================
+   STYLES
+====================================================== */
 
-      <Text style={styles.analyticsValue}>
-        {value}
-      </Text>
-
-      <Text style={styles.analyticsGrowth}>
-        ↗ {growth}
-      </Text>
-
-      <LineChart
-        data={{
-          labels: ["", "", "", "", "", ""],
-          datasets: [{ data }],
-        }}
-        width={220}
-        height={90}
-        withDots={false}
-        withInnerLines={false}
-        withOuterLines={false}
-        withVerticalLabels={false}
-        withHorizontalLabels={false}
-        chartConfig={{
-          backgroundGradientFrom: "#fff",
-          backgroundGradientTo: "#fff",
-          color: () => color,
-        }}
-        bezier
-        style={{ marginLeft: -25 }}
-      />
-    </View>
-  );
-}
-
-function RecentListingCard({
-  title,
-  location,
-  price,
-}: any) {
-  return (
-    <TouchableOpacity style={styles.recentCard}>
-      <Image
-        source={{
-          uri: "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-        }}
-        style={styles.recentImage}
-      />
-
-      <Text style={styles.recentTitle}>
-        {title}
-      </Text>
-
-      <Text style={styles.recentLocation}>
-        {location}
-      </Text>
-
-      <Text style={styles.recentPrice}>
-        {price}
-      </Text>
-
-      <View style={styles.pendingBadgeSmall}>
-        <Text style={styles.pendingSmallText}>
-          Pending
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-/* =========================================================
- CHART CONFIG
-========================================================= */
-
-const chartConfig = {
-  backgroundGradientFrom: "#FFFFFF",
-  backgroundGradientTo: "#FFFFFF",
-  decimalPlaces: 0,
-  color: (opacity = 1) =>
-    `rgba(124,58,237,${opacity})`,
-  labelColor: () => "#64748B",
+const cardShadow = {
+  shadowColor: "#000",
+  shadowOpacity: 0.04,
+  shadowRadius: 10,
+  shadowOffset: {
+    width: 0,
+    height: 4,
+  },
+  elevation: 2,
 };
 
-/* =========================================================
- STYLES
-========================================================= */
-
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: BG,
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 18,
   },
 
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: BG,
   },
 
   loadingText: {
-    marginTop: 12,
-    color: "#64748B",
+    marginTop: 14,
+    color: TEXT_MED,
   },
 
-  topBar: {
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 22,
+    marginBottom: 18,
   },
 
-  greeting: {
-    fontSize: 28,
+  brand: {
+    color: PRIMARY,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  headerTitle: {
+    fontSize: 24,
     fontWeight: "800",
-    color: "#0F172A",
+    color: TEXT_DARK,
   },
 
-  subtitle: {
-    color: "#64748B",
-    marginTop: 4,
-    fontSize: 14,
+  headerSubtitle: {
+    marginTop: 6,
+    color: TEXT_MED,
+    lineHeight: 20,
   },
 
-  topActions: {
-    flexDirection: "row",
+  headerActions: {
     alignItems: "center",
-    gap: 14,
+    marginLeft: 12,
   },
 
   notificationButton: {
+    marginBottom: 14,
     position: "relative",
   },
 
   notificationBadge: {
     position: "absolute",
-    right: -4,
-    top: -4,
-    backgroundColor: "#7C3AED",
-    width: 18,
+    top: -5,
+    right: -6,
+    backgroundColor: RED,
+    minWidth: 18,
     height: 18,
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 4,
   },
 
   notificationText: {
@@ -806,392 +1155,320 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
 
-  searchContainer: {
-    flexDirection: "row",
-    marginBottom: 18,
-    gap: 10,
-  },
-
-  searchInputWrapper: {
-    flex: 1,
-    backgroundColor: "white",
+  priorityBar: {
+    backgroundColor: "#FEF3C7",
     borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    marginBottom: 18,
   },
 
-  searchInput: {
-    flex: 1,
-    paddingVertical: 14,
-    marginLeft: 8,
-    color: "#0F172A",
+  priorityText: {
+    marginLeft: 10,
+    color: "#92400E",
+    fontWeight: "700",
   },
 
-  filterButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: "white",
-    justifyContent: "center",
+  summaryItem: {
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    flex: 1,
+  },
+
+  summaryDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: "#E5E7EB",
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: TEXT_DARK,
+    marginBottom: 14,
   },
 
   statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
+  flexDirection: "row",
+  flexWrap: "wrap",
+  marginBottom: 12,
+  marginHorizontal: -4,
+},
 
   dashboardCard: {
-    backgroundColor: "white",
-    width: "48%",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
+    width: 165,
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    ...cardShadow,
   },
 
   dashboardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 14,
   },
 
   dashboardTitle: {
-    color: "#475569",
-    fontSize: 13,
-    marginBottom: 6,
+    marginTop: 12,
+    color: TEXT_MED,
+    fontSize: 12,
   },
 
   dashboardValue: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: "800",
-    color: "#0F172A",
+    color: TEXT_DARK,
+    marginTop: 5,
   },
 
-  dashboardGrowth: {
-    marginTop: 8,
-    color: "#16A34A",
-    fontWeight: "600",
-    fontSize: 12,
+  dashboardSub: {
+    marginTop: 6,
+    color: PRIMARY,
+    fontWeight: "700",
+    fontSize: 11,
   },
 
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
-    marginTop: 8,
+    marginBottom: 14,
+    marginTop: 4,
   },
 
   sectionHeaderTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0F172A",
+    color: TEXT_DARK,
   },
 
   sectionAction: {
-    color: "#7C3AED",
+    color: PRIMARY,
     fontWeight: "700",
   },
 
-  card: {
-    backgroundColor: "white",
-    borderRadius: 24,
+  quickActionCard: {
+    width: 170,
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
+    marginRight: 12,
+    ...cardShadow,
   },
 
-  tabs: {
-    flexDirection: "row",
-    marginBottom: 18,
-    gap: 10,
-  },
-
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+  quickIcon: {
+    width: 42,
+    height: 42,
     borderRadius: 12,
-    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
   },
 
-  activeTab: {
-    backgroundColor: "#7C3AED",
-  },
-
-  tabText: {
-    fontWeight: "600",
-    color: "#64748B",
-  },
-
-  activeTabText: {
-    color: "white",
-  },
-
-  listingItem: {
-    flexDirection: "row",
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    paddingBottom: 16,
-  },
-
-  listingImage: {
-    width: 78,
-    height: 78,
-    borderRadius: 14,
-    marginRight: 14,
-  },
-
-  listingTitle: {
+  quickTitle: {
     fontWeight: "700",
-    fontSize: 16,
-    color: "#0F172A",
+    color: TEXT_DARK,
+    fontSize: 14,
   },
 
-  listingLocation: {
+  quickSubtitle: {
     marginTop: 4,
-    color: "#64748B",
-    fontSize: 13,
-  },
-
-  listingMeta: {
-    marginTop: 6,
-    color: "#94A3B8",
+    color: TEXT_MED,
     fontSize: 12,
   },
 
-  listingPrice: {
-    marginTop: 6,
-    fontWeight: "700",
-    color: "#0F172A",
+  queueCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    marginBottom: 12,
+    ...cardShadow,
   },
 
-  pendingBadge: {
-    backgroundColor: "#FFF7ED",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  queueImage: {
+    width: 78,
+    height: 78,
+    borderRadius: 14,
+    marginRight: 12,
+  },
+
+  queueTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  statusBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 999,
+    alignSelf: "flex-start",
   },
 
-  pendingText: {
-    color: "#EA580C",
+  statusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#D97706",
+  },
+
+  queueTitle: {
+    marginTop: 8,
+    fontWeight: "700",
+    fontSize: 14,
+    color: TEXT_DARK,
+  },
+
+  queueLocation: {
+    marginTop: 3,
+    color: TEXT_MED,
+    fontSize: 12,
+  },
+
+  queueSeller: {
+    marginTop: 3,
+    color: TEXT_LIGHT,
+    fontSize: 11,
+  },
+
+  queueFooter: {
+    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  queuePrice: {
+    fontWeight: "800",
+    color: TEXT_DARK,
+    fontSize: 13,
+  },
+
+  queueButtons: {
+    flexDirection: "row",
+    gap: 6,
+  },
+
+  approveButton: {
+    backgroundColor: PRIMARY,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    minWidth: 80,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  approveText: {
+    color: "white",
     fontWeight: "700",
     fontSize: 12,
   },
 
   reviewButton: {
-    backgroundColor: "#F5F3FF",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 6,
-  },
-
-  reviewButtonText: {
-    color: "#7C3AED",
-    fontWeight: "700",
-  },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 14,
-  },
-
-  quickActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-
-  quickActionCard: {
-    width: "48%",
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
-  },
-
-  quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: PRIMARY_LIGHT,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
   },
 
-  quickActionLabel: {
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  quickActionSub: {
-    marginTop: 4,
-    color: "#64748B",
-    fontSize: 12,
-  },
-
-  alertGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-
-  alertCard: {
-    width: "48%",
-    backgroundColor: "white",
-    borderRadius: 20,
+  logsCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
-  },
-
-  alertIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  alertCount: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-
-  alertTitle: {
-    marginTop: 6,
-    color: "#475569",
-    fontWeight: "600",
+    marginBottom: 24,
+    ...cardShadow,
   },
 
   activityItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 16,
   },
 
   activityIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
 
   activityText: {
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  activitySub: {
-    marginTop: 4,
-    color: "#64748B",
-    fontSize: 12,
+    fontWeight: "600",
+    color: TEXT_DARK,
+    fontSize: 13,
   },
 
   activityTime: {
-    color: "#94A3B8",
-    fontSize: 12,
-  },
-
-  analyticsCard: {
-    width: 240,
-    backgroundColor: "white",
-    borderRadius: 22,
-    padding: 16,
-    marginRight: 14,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
-  },
-
-  analyticsTitle: {
-    color: "#64748B",
-    fontWeight: "600",
-  },
-
-  analyticsValue: {
-    fontSize: 28,
-    fontWeight: "800",
-    marginTop: 6,
-    color: "#0F172A",
-  },
-
-  analyticsGrowth: {
-    marginTop: 4,
-    color: "#16A34A",
-    fontWeight: "700",
-  },
-
-  recentCard: {
-    width: 220,
-    backgroundColor: "white",
-    borderRadius: 22,
-    padding: 12,
-    marginRight: 14,
-    borderWidth: 1,
-    borderColor: "#EEF2F7",
-  },
-
-  recentImage: {
-    width: "100%",
-    height: 120,
-    borderRadius: 18,
-    marginBottom: 12,
-  },
-
-  recentTitle: {
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  recentLocation: {
-    marginTop: 4,
-    color: "#64748B",
-    fontSize: 12,
-  },
-
-  recentPrice: {
-    marginTop: 8,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-
-  pendingBadgeSmall: {
-    backgroundColor: "#FFF7ED",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    marginTop: 10,
-  },
-
-  pendingSmallText: {
-    color: "#EA580C",
-    fontWeight: "700",
+    color: TEXT_LIGHT,
     fontSize: 11,
+    marginLeft: 10,
   },
+
+  noActivity: {
+    color: TEXT_MED,
+    textAlign: "center",
+    paddingVertical: 10,
+  },
+
+  emptyCard: {
+    backgroundColor: CARD_BG,
+    borderRadius: 18,
+    padding: 24,
+    alignItems: "center",
+    marginBottom: 18,
+    ...cardShadow,
+  },
+
+  emptyTitle: {
+    marginTop: 12,
+    fontWeight: "700",
+    fontSize: 15,
+    color: TEXT_DARK,
+  },
+
+  emptySub: {
+    marginTop: 5,
+    color: TEXT_MED,
+    fontSize: 12,
+  },
+  summaryCard: {
+  backgroundColor: "transparent",
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 22,
+},
+
+summaryItemCard: {
+  flex: 1,
+  backgroundColor: CARD_BG,
+  borderRadius: 16,
+  paddingVertical: 14,
+  paddingHorizontal: 10,
+  marginHorizontal: 4,
+  alignItems: "center",
+  ...cardShadow,
+},
+
+summaryValue: {
+  fontSize: 22,
+  fontWeight: "800",
+  color: TEXT_DARK,
+},
+
+summaryLabel: {
+  marginTop: 4,
+  color: TEXT_MED,
+  fontSize: 12,
+},
 });

@@ -6,12 +6,27 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useState } from "react";
 
-const screenWidth = Dimensions.get("window").width;
+import {
+  approveListing,
+  rejectListing,
+  flagListing,
+  revertListing,
+} from "../../../services/adminService";
+
+import { Ionicons } from "@expo/vector-icons";
+
+import {
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
+
+const screenWidth =
+  Dimensions.get("window").width;
 
 export default function ListingDetailsScreen() {
   const navigation = useNavigation<any>();
@@ -19,25 +34,129 @@ export default function ListingDetailsScreen() {
 
   const { listing } = route.params;
 
+  const [currentListing, setCurrentListing] =
+    useState(listing);
+
+  const [actionLoading, setActionLoading] =
+    useState(false);
+
+  const status =
+    currentListing?.moderation_status ||
+    "pending";
+
   const images =
-    listing.images?.length > 0
-      ? listing.images
+    currentListing?.images?.length > 0
+      ? currentListing.images
       : [
+          currentListing?.image,
           "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-          "https://images.unsplash.com/photo-1494526585095-c41746248156",
-          "https://images.unsplash.com/photo-1441974231531-c6227db76b6e",
-        ];
+        ].filter(Boolean);
+
+  async function handleApprove() {
+    try {
+      setActionLoading(true);
+
+      await approveListing(currentListing.id);
+
+      setCurrentListing({
+        ...currentListing,
+        moderation_status: "approved",
+      });
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "Failed to approve listing"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleReject() {
+    try {
+      setActionLoading(true);
+
+      await rejectListing(currentListing.id);
+
+      setCurrentListing({
+        ...currentListing,
+        moderation_status: "rejected",
+      });
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "Failed to reject listing"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleFlag() {
+    try {
+      setActionLoading(true);
+
+      await flagListing(currentListing.id);
+
+      setCurrentListing({
+        ...currentListing,
+        moderation_status: "flagged",
+      });
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "Failed to flag listing"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleRevert() {
+    try {
+      setActionLoading(true);
+
+      await revertListing(currentListing.id);
+
+      setCurrentListing({
+        ...currentListing,
+        moderation_status: "pending",
+      });
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "Failed to revert listing"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  function renderLoading(
+    color: string = "white"
+  ) {
+    return (
+      <ActivityIndicator
+        size="small"
+        color={color}
+      />
+    );
+  }
 
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
-      {/* IMAGE SECTION */}
+      {/* IMAGE */}
 
       <View style={styles.imageWrapper}>
         <Image
-          source={{ uri: images[0] }}
+          source={{
+            uri:
+              images?.[0] ||
+              "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+          }}
           style={styles.mainImage}
         />
 
@@ -62,17 +181,34 @@ export default function ListingDetailsScreen() {
       {/* CONTENT */}
 
       <View style={styles.content}>
-
         {/* STATUS */}
 
         <View style={styles.topRow}>
-          <View style={styles.pendingBadge}>
-            <Text style={styles.pendingText}>
-              {listing.status || "Pending"}
+          <View
+            style={[
+              styles.statusBadge,
+
+              status === "approved" &&
+                styles.approvedBadge,
+
+              status === "rejected" &&
+                styles.rejectedBadge,
+
+              status === "flagged" &&
+                styles.flaggedBadge,
+
+              status === "pending" &&
+                styles.pendingBadge,
+            ]}
+          >
+            <Text style={styles.badgeText}>
+              {status}
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.moreButton}>
+          <TouchableOpacity
+            style={styles.moreButton}
+          >
             <Ionicons
               name="ellipsis-horizontal"
               size={20}
@@ -84,8 +220,11 @@ export default function ListingDetailsScreen() {
         {/* TITLE */}
 
         <Text style={styles.title}>
-          {listing.title}
+          {currentListing?.title ||
+            "Untitled Listing"}
         </Text>
+
+        {/* LOCATION */}
 
         <Text style={styles.location}>
           <Ionicons
@@ -93,42 +232,52 @@ export default function ListingDetailsScreen() {
             size={15}
             color="#64748B"
           />
+
           {" "}
-          {listing.municipality},
-          {" "}
-          {listing.province}
+
+          {currentListing?.municipality ||
+            "N/A"}
+          ,{" "}
+          {currentListing?.province ||
+            "N/A"}
         </Text>
 
         {/* PRICE */}
 
         <Text style={styles.price}>
-          ₱{Number(listing.price).toLocaleString()}
+          ₱
+          {Number(
+            currentListing?.price || 0
+          ).toLocaleString()}
         </Text>
 
         {/* SELLER */}
 
         <View style={styles.sellerCard}>
           <View style={styles.sellerLeft}>
-
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
-                {listing.seller_name?.charAt(0) || "S"}
+                {currentListing?.seller_name?.charAt(
+                  0
+                ) || "S"}
               </Text>
             </View>
 
             <View>
               <Text style={styles.sellerName}>
-                {listing.seller_name || "Unknown Seller"}
+                {currentListing?.seller_name ||
+                  "Unknown Seller"}
               </Text>
 
               <Text style={styles.sellerEmail}>
-                seller@email.com
+                Seller Account
               </Text>
             </View>
-
           </View>
 
-          <TouchableOpacity style={styles.profileButton}>
+          <TouchableOpacity
+            style={styles.profileButton}
+          >
             <Ionicons
               name="person-outline"
               size={18}
@@ -145,8 +294,8 @@ export default function ListingDetailsScreen() {
           </Text>
 
           <Text style={styles.description}>
-            {listing.description ||
-              "This property listing is currently awaiting moderation review. The land offers excellent accessibility, good investment potential, and suitable residential or commercial development opportunities."}
+            {currentListing?.description ||
+              "No description provided."}
           </Text>
         </View>
 
@@ -158,31 +307,34 @@ export default function ListingDetailsScreen() {
           </Text>
 
           <View style={styles.detailsGrid}>
-
             <DetailCard
               icon="resize-outline"
               label="Lot Area"
-              value={`${listing.area_sqm || 0} sqm`}
+              value={`${currentListing?.area_sqm || 0} sqm`}
             />
 
             <DetailCard
               icon="business-outline"
               label="Property Type"
-              value={listing.property_type || "Residential"}
+              value={
+                currentListing?.property_type ||
+                "Residential"
+              }
             />
 
             <DetailCard
               icon="document-text-outline"
-              label="Title Status"
-              value="Clean Title"
+              label="Moderation"
+              value={status}
             />
 
             <DetailCard
-              icon="calendar-outline"
-              label="Posted"
-              value="2h ago"
+              icon="cash-outline"
+              label="Price"
+              value={`₱${Number(
+                currentListing?.price || 0
+              ).toLocaleString()}`}
             />
-
           </View>
         </View>
 
@@ -195,90 +347,187 @@ export default function ListingDetailsScreen() {
 
           <ScrollView
             horizontal
-            showsHorizontalScrollIndicator={false}
+            showsHorizontalScrollIndicator={
+              false
+            }
           >
-
-            {images.map((img: string, index: number) => (
-              <Image
-                key={index}
-                source={{ uri: img }}
-                style={styles.galleryImage}
-              />
-            ))}
-
+            {images.map(
+              (
+                img: string,
+                index: number
+              ) => (
+                <Image
+                  key={index}
+                  source={{ uri: img }}
+                  style={styles.galleryImage}
+                />
+              )
+            )}
           </ScrollView>
         </View>
 
-        {/* MODERATION NOTES */}
+        {/* ACTIONS */}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Moderation Notes
-          </Text>
+        {status === "pending" && (
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.rejectButton}
+              onPress={handleReject}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                renderLoading()
+              ) : (
+                <>
+                  <Ionicons
+                    name="close"
+                    size={18}
+                    color="white"
+                  />
 
-          <View style={styles.notesCard}>
-            <Text style={styles.noteText}>
-              • Verify uploaded land title document.
-            </Text>
+                  <Text
+                    style={styles.actionText}
+                  >
+                    Reject
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
 
-            <Text style={styles.noteText}>
-              • Check for duplicate listings.
-            </Text>
+            <TouchableOpacity
+              style={styles.flagButton}
+              onPress={handleFlag}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                renderLoading("#B45309")
+              ) : (
+                <>
+                  <Ionicons
+                    name="flag-outline"
+                    size={18}
+                    color="#B45309"
+                  />
 
-            <Text style={styles.noteText}>
-              • Confirm property location accuracy.
-            </Text>
+                  <Text
+                    style={styles.flagText}
+                  >
+                    Flag
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.approveButton}
+              onPress={handleApprove}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                renderLoading()
+              ) : (
+                <>
+                  <Ionicons
+                    name="checkmark"
+                    size={18}
+                    color="white"
+                  />
+
+                  <Text
+                    style={styles.actionText}
+                  >
+                    Approve
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
-        {/* ACTION BUTTONS */}
+        {status === "flagged" && (
+          <View style={styles.actionsColumn}>
+            <TouchableOpacity
+              style={styles.warningButton}
+              onPress={handleRevert}
+              disabled={actionLoading}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={18}
+                color="#B45309"
+              />
 
-        <View style={styles.actionsContainer}>
+              <Text style={styles.flagText}>
+                Return to Review
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.rejectButton}>
-            <Ionicons
-              name="close"
-              size={18}
-              color="white"
-            />
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity
+                style={styles.rejectButton}
+                onPress={handleReject}
+                disabled={actionLoading}
+              >
+                <Ionicons
+                  name="close"
+                  size={18}
+                  color="white"
+                />
 
-            <Text style={styles.actionText}>
-              Reject
-            </Text>
-          </TouchableOpacity>
+                <Text
+                  style={styles.actionText}
+                >
+                  Reject
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.flagButton}>
-            <Ionicons
-              name="flag-outline"
-              size={18}
-              color="#F59E0B"
-            />
+              <TouchableOpacity
+                style={styles.approveButton}
+                onPress={handleApprove}
+                disabled={actionLoading}
+              >
+                <Ionicons
+                  name="checkmark"
+                  size={18}
+                  color="white"
+                />
 
-            <Text style={styles.flagText}>
-              Flag
-            </Text>
-          </TouchableOpacity>
+                <Text
+                  style={styles.actionText}
+                >
+                  Approve
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
-          <TouchableOpacity style={styles.approveButton}>
-            <Ionicons
-              name="checkmark"
-              size={18}
-              color="white"
-            />
+        {(status === "approved" ||
+          status === "rejected") && (
+          <View style={styles.actionsColumn}>
+            <TouchableOpacity
+              style={styles.warningButton}
+              onPress={handleRevert}
+              disabled={actionLoading}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={18}
+                color="#B45309"
+              />
 
-            <Text style={styles.actionText}>
-              Approve
-            </Text>
-          </TouchableOpacity>
-
-        </View>
-
+              <Text style={styles.flagText}>
+                Revert to Pending
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
 }
 
-/* ================= COMPONENTS ================= */
+/* COMPONENTS */
 
 function DetailCard({
   icon,
@@ -288,7 +537,7 @@ function DetailCard({
   return (
     <View style={styles.detailCard}>
       <Ionicons
-        name={icon}
+        name={icon as any}
         size={20}
         color="#7C3AED"
       />
@@ -304,7 +553,7 @@ function DetailCard({
   );
 }
 
-/* ================= STYLES ================= */
+/* STYLES */
 
 const styles = StyleSheet.create({
   container: {
@@ -337,7 +586,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 20,
     bottom: 20,
-    backgroundColor: "rgba(15,23,42,0.7)",
+    backgroundColor:
+      "rgba(15,23,42,0.7)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
@@ -350,7 +600,7 @@ const styles = StyleSheet.create({
 
   content: {
     padding: 20,
-    paddingBottom: 120,
+    paddingBottom: 40,
   },
 
   topRow: {
@@ -359,23 +609,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  pendingBadge: {
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  statusBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 999,
   },
 
-  pendingText: {
-    color: "#B45309",
+  pendingBadge: {
+    backgroundColor: "#FEF3C7",
+  },
+
+  approvedBadge: {
+    backgroundColor: "#DCFCE7",
+  },
+
+  rejectedBadge: {
+    backgroundColor: "#FEE2E2",
+  },
+
+  flaggedBadge: {
+    backgroundColor: "#EDE9FE",
+  },
+
+  badgeText: {
     fontWeight: "700",
     textTransform: "capitalize",
+    color: "#0F172A",
   },
 
   moreButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
@@ -501,40 +766,21 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
 
-  notesCard: {
-    backgroundColor: "white",
-    borderRadius: 18,
-    padding: 18,
-  },
-
-  noteText: {
-    color: "#475569",
-    marginBottom: 10,
-    lineHeight: 22,
+  actionsColumn: {
+    marginTop: 30,
+    gap: 12,
   },
 
   actionsContainer: {
     flexDirection: "row",
-    marginTop: 35,
-    gap: 10,
+    gap: 12,
   },
 
   rejectButton: {
     flex: 1,
     backgroundColor: "#EF4444",
-    paddingVertical: 16,
-    borderRadius: 18,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  flagButton: {
-    flex: 1,
-    backgroundColor: "#FEF3C7",
-    paddingVertical: 16,
-    borderRadius: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
@@ -544,8 +790,29 @@ const styles = StyleSheet.create({
   approveButton: {
     flex: 1,
     backgroundColor: "#10B981",
-    paddingVertical: 16,
-    borderRadius: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  flagButton: {
+    flex: 1,
+    backgroundColor: "#FEF3C7",
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  warningButton: {
+    backgroundColor: "#FEF3C7",
+    paddingVertical: 14,
+    borderRadius: 16,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",

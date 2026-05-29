@@ -103,6 +103,19 @@ export const flagListing = async (listingId: string) => {
   });
 };
 
+export const revertListing = async (
+  listingId: string
+) => {
+
+  return apiRequest(
+    `/admin/listings/${listingId}/revert`,
+    {
+      method: "PATCH",
+    }
+  );
+};
+
+
 /* ================================
    LOGS
 ================================ */

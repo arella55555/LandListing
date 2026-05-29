@@ -94,6 +94,28 @@ static async unsuspendUser(
     res.json(result);
   }
 
+  static async flagListing(req: any, res: Response) {
+  const result = await AdminService.flagListing(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json(result);
+}
+static async revertListing(
+  req: any,
+  res: Response
+) {
+
+  const result =
+    await AdminService.revertListing(
+      req.params.id,
+      req.user.id
+    );
+
+  res.json(result);
+}
+
   static async suspendUser(req: any, res: Response) {
     const result = await AdminService.suspendUser(
       req.params.id,

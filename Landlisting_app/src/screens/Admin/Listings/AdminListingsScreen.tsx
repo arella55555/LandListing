@@ -11,14 +11,15 @@ import {
   Image,
 } from "react-native";
 
-import { useEffect, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useEffect, useState, useCallback } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
   getListings,
   approveListing,
   rejectListing,
+  flagListing, // ✅ FIXED: added missing import
 } from "../../../services/adminService";
 
 import { COLORS } from "../../../constants/color";
@@ -41,9 +42,11 @@ export default function AdminListingsScreen() {
     "all" | "pending" | "approved" | "rejected" | "flagged"
   >("pending");
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     fetchListings();
-  }, []);
+  }, [])
+);
 
   useEffect(() => {
     applyFilters();
@@ -54,7 +57,9 @@ export default function AdminListingsScreen() {
       setLoading(true);
 
       const data = await getListings();
-      setListings(data?.listings || []);
+      const safe = Array.isArray(data?.listings) ? data.listings : [];
+
+      setListings(safe);
     } catch (error) {
       console.error("Fetch listings error:", error);
       setListings([]);
@@ -64,11 +69,18 @@ export default function AdminListingsScreen() {
     }
   }
 
+  // ✅ FIXED: unified status source
+  function getListingStatus(item: any) {
+    return item.status || item.moderation_status || "pending";
+  }
+
   function applyFilters() {
     let filtered = [...listings];
 
     if (selectedTab !== "all") {
-      filtered = filtered.filter((l) => l.status === selectedTab);
+      filtered = filtered.filter(
+        (l) => l.moderation_status === selectedTab
+      );
     }
 
     if (search.trim()) {
@@ -82,44 +94,82 @@ export default function AdminListingsScreen() {
 
   async function handleApprove(id: string) {
   try {
-    console.log("APPROVE CLICK:", id);
+    setActionLoading(id);
 
-    const res = await approveListing(id);
+    await approveListing(id);
 
-    console.log("APPROVE RESULT:", res);
-
-    await fetchListings();
+    setListings(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, moderation_status: "approved" }
+          : item
+      )
+    );
   } catch (error: any) {
-    console.log("APPROVE ERROR:", error.message);
-    alert(error.message); // 🔥 THIS IS THE KEY FIX
+    alert(error.message);
+  } finally {
+    setActionLoading(null);
   }
 }
 
   async function handleReject(id: string) {
   try {
-    console.log("Rejecting:", id);
+    setActionLoading(id);
 
     await rejectListing(id);
 
-    console.log("Rejected!");
-
-    await fetchListings();
+    setListings(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, moderation_status: "rejected" }
+          : item
+      )
+    );
   } catch (error: any) {
-    console.log("Reject failed:", error.message);
+    alert(error.message);
+  } finally {
+    setActionLoading(null);
   }
 }
 
-async function handleFlag(id: string) {
+  async function handleFlag(id: string) {
   try {
-    console.log("Flagging:", id);
+    setActionLoading(id);
 
-    // temporary frontend-only behavior
-    // or treat as rejected/pending review
-    await rejectListing(id);
+    await flagListing(id);
 
-    await fetchListings();
+    setListings(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, moderation_status: "flagged" }
+          : item
+      )
+    );
   } catch (error: any) {
-    console.log("Flag failed:", error.message);
+    alert(error.message);
+  } finally {
+    setActionLoading(null);
+  }
+}
+async function handleRevert(id: string) {
+  try {
+    setActionLoading(id);
+
+    // OPTIONAL:
+    // await revertListing(id);
+
+    setListings(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, moderation_status: "pending" }
+          : item
+      )
+    );
+
+  } catch (error: any) {
+    alert(error.message);
+  } finally {
+    setActionLoading(null);
   }
 }
 
@@ -154,10 +204,21 @@ async function handleFlag(id: string) {
     }
   }
 
-  const pendingCount = listings.filter((l) => l.status === "pending").length;
-  const approvedCount = listings.filter((l) => l.status === "approved").length;
-  const rejectedCount = listings.filter((l) => l.status === "rejected").length;
-  const flaggedCount = listings.filter((l) => l.status === "flagged").length;
+  const pendingCount = listings.filter(
+    l => l.moderation_status === "pending"
+  ).length;
+
+  const approvedCount = listings.filter(
+    l => l.moderation_status === "approved"
+  ).length;
+
+  const rejectedCount = listings.filter(
+    l => l.moderation_status === "rejected"
+  ).length;
+
+  const flaggedCount = listings.filter(
+    l => l.moderation_status === "flagged"
+  ).length;
 
   if (loading) {
     return (
@@ -172,7 +233,7 @@ async function handleFlag(id: string) {
     <View style={styles.container}>
       <FlatList
         data={filteredListings}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item.id ?? String(index)}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -184,7 +245,6 @@ async function handleFlag(id: string) {
         }
         ListHeaderComponent={
           <>
-            {/* HEADER */}
             <View style={styles.header}>
               <View>
                 <Text style={styles.title}>Listings</Text>
@@ -194,7 +254,6 @@ async function handleFlag(id: string) {
               </View>
             </View>
 
-            {/* SEARCH */}
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={18} color="#94A3B8" />
               <TextInput
@@ -205,7 +264,6 @@ async function handleFlag(id: string) {
               />
             </View>
 
-            {/* STATS */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <StatsCard label="Pending" value={pendingCount} color="#F59E0B" icon="time-outline" />
               <StatsCard label="Approved" value={approvedCount} color="#10B981" icon="checkmark-circle-outline" />
@@ -213,7 +271,6 @@ async function handleFlag(id: string) {
               <StatsCard label="Flagged" value={flaggedCount} color="#8B5CF6" icon="flag-outline" />
             </ScrollView>
 
-            {/* FILTERS */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {["all", "pending", "approved", "rejected", "flagged"].map((tab) => (
                 <FilterTab
@@ -227,7 +284,16 @@ async function handleFlag(id: string) {
           </>
         }
         renderItem={({ item }) => {
-          const status = normalizeStatus(item.status);
+          const status = item.moderation_status;
+          /**
+           * function getActions(status: string) {
+                if (status === "pending") return "moderate";
+                if (status === "flagged") return "review";
+                return "view";
+              }
+           */
+          const image =
+            item.image || item.images?.[0] || FALLBACK_IMAGE;
 
           return (
             <TouchableOpacity
@@ -236,24 +302,20 @@ async function handleFlag(id: string) {
                 navigation.navigate("ListingDetails", { listing: item })
               }
             >
-              {/* TOP */}
               <View style={styles.topRow}>
-                <Image
-                  source={{ uri: item.image || FALLBACK_IMAGE }}
-                  style={styles.imagePlaceholder}
-                />
+                <Image source={{ uri: image }} style={styles.imagePlaceholder} />
 
                 <View style={{ flex: 1 }}>
                   <Text style={styles.listingTitle}>
-                    {item.title}
+                    {item.title || "Untitled Listing"}
                   </Text>
 
                   <Text style={styles.location}>
-                    {item.municipality}, {item.province}
+                    {item.municipality || "N/A"}, {item.province || "N/A"}
                   </Text>
 
                   <Text style={styles.price}>
-                    ₱{Number(item.price).toLocaleString()}
+                    ₱{Number(item.price || 0).toLocaleString()}
                   </Text>
 
                   <Text style={styles.metaText}>
@@ -262,46 +324,88 @@ async function handleFlag(id: string) {
                 </View>
               </View>
 
-              {/* INFO */}
               <View style={styles.infoRow}>
-                <InfoBadge icon="resize-outline" text={`${item.area_sqm} sqm`} />
-                <InfoBadge icon="business-outline" text={item.property_type} />
+                <InfoBadge icon="resize-outline" text={`${item.area_sqm || 0} sqm`} />
+                <InfoBadge icon="business-outline" text={item.property_type || "N/A"} />
               </View>
 
-              {/* STATUS */}
               <View style={[styles.statusBadge, getStatusStyle(status)]}>
                 <Text style={styles.badgeText}>{status}</Text>
               </View>
 
-              {/* ACTIONS */}
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  disabled={actionLoading === item.id}
-                  style={styles.rejectButton}
-                  onPress={() => handleReject(item.id)}
-                >
-                  <Ionicons name="close" size={18} color="#EF4444" />
-                  <Text style={styles.rejectText}>Reject</Text>
-                </TouchableOpacity>
+              {status === "pending" && (
+  <View style={styles.actions}>
+    <TouchableOpacity
+      disabled={actionLoading === item.id}
+      style={styles.rejectButton}
+      onPress={() => handleReject(item.id)}
+    >
+      <Ionicons name="close" size={18} color="#EF4444" />
+      <Text style={styles.rejectText}>Reject</Text>
+    </TouchableOpacity>
 
-                <TouchableOpacity
-                  disabled={actionLoading === item.id}
-                  style={styles.flagButton}
-                  onPress={() => handleFlag(item.id)}
-                >
-                  <Ionicons name="flag-outline" size={18} color="#F59E0B" />
-                  <Text style={styles.flagText}>Flag</Text>
-                </TouchableOpacity>
+    <TouchableOpacity
+      disabled={actionLoading === item.id}
+      style={styles.flagButton}
+      onPress={() => handleFlag(item.id)}
+    >
+      <Ionicons name="flag-outline" size={18} color="#F59E0B" />
+      <Text style={styles.flagText}>Flag</Text>
+    </TouchableOpacity>
 
-                <TouchableOpacity
-                  disabled={actionLoading === item.id}
-                  style={styles.approveButton}
-                  onPress={() => handleApprove(item.id)}
-                >
-                  <Ionicons name="checkmark" size={18} color="white" />
-                  <Text style={styles.approveText}>Approve</Text>
-                </TouchableOpacity>
-              </View>
+    <TouchableOpacity
+      disabled={actionLoading === item.id}
+      style={styles.approveButton}
+      onPress={() => handleApprove(item.id)}
+    >
+      <Ionicons name="checkmark" size={18} color="white" />
+      <Text style={styles.approveText}>Approve</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+              {status === "flagged" && (
+  <View style={styles.actions}>
+    <TouchableOpacity
+      style={styles.approveButton}
+      onPress={() =>
+        navigation.navigate("ListingDetails", { listing: item })
+      }
+    >
+      <Ionicons name="eye-outline" size={18} color="white" />
+      <Text style={styles.approveText}>Inspect</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.flagButton}
+      onPress={() => handleRevert(item.id)}
+    >
+      <Ionicons
+        name="refresh-outline"
+        size={18}
+        color="#D97706"
+      />
+
+      <Text style={styles.flagText}>
+        Revert
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+{status !== "pending" && status !== "flagged" && (
+  <View style={styles.actions}>
+    <TouchableOpacity
+      style={styles.approveButton}
+      onPress={() =>
+        navigation.navigate("ListingDetails", { listing: item })
+      }
+    >
+      <Ionicons name="eye-outline" size={18} color="white" />
+      <Text style={styles.approveText}>View</Text>
+    </TouchableOpacity>
+  </View>
+)}
 
               {actionLoading === item.id && (
                 <Text style={{ marginTop: 8, color: "#64748B" }}>
@@ -311,12 +415,6 @@ async function handleFlag(id: string) {
             </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="home-outline" size={55} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>No listings found</Text>
-          </View>
-        }
       />
     </View>
   );

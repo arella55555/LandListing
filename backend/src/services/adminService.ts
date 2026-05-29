@@ -7,63 +7,102 @@ class AdminService {
   // =========================================
 
   static async getDashboardStats() {
+  const [
+    totalUsers,
+    totalListings,
+    pendingListings,
+    approvedListings,
+    suspendedUsers,
+    verifiedUsers,
+    adminUsers,
+    fraudReports,
+    flaggedListings,
+    openReports,
+    recentListings,
+    recentLogs,
+  ] = await Promise.all([
+    pool.query(`SELECT COUNT(*) FROM users`),
 
-  const totalUsers = await pool.query(`
-    SELECT COUNT(*) FROM users
-  `);
+    pool.query(`SELECT COUNT(*) FROM listings`),
 
-  const totalListings = await pool.query(`
-    SELECT COUNT(*) FROM listings
-  `);
+    pool.query(`
+      SELECT COUNT(*) FROM listings
+      WHERE moderation_status = 'pending'
+    `),
 
-  const approvedListings = await pool.query(`
-  SELECT COUNT(*) FROM listings
-  WHERE moderation_status='approved'
-`);
+    pool.query(`
+      SELECT COUNT(*) FROM listings
+      WHERE moderation_status = 'approved'
+    `),
 
-const pendingListings = await pool.query(`
-  SELECT COUNT(*) FROM listings
-  WHERE moderation_status='pending'
-`);
-  const suspendedUsers = await pool.query(`
-    SELECT COUNT(*) FROM users
-    WHERE is_suspended=true
-  `);
+    pool.query(`
+      SELECT COUNT(*) FROM users
+      WHERE is_suspended = true
+    `),
 
-  const verifiedUsers = await pool.query(`
-    SELECT COUNT(*) FROM users
-    WHERE is_verified=true
-  `);
+    pool.query(`
+      SELECT COUNT(*) FROM users
+      WHERE is_verified = true
+    `),
 
-  const admins = await pool.query(`
-    SELECT COUNT(*) FROM users
-    WHERE role IN ('admin', 'superadmin')
-  `);
+    pool.query(`
+      SELECT COUNT(*) FROM users
+      WHERE role IN ('admin', 'superadmin')
+    `),
+
+    pool.query(`
+      SELECT COUNT(*) FROM listing_reports
+      WHERE reason ILIKE '%fraud%'
+    `),
+
+    pool.query(`
+      SELECT COUNT(*) FROM listings
+      WHERE moderation_status = 'flagged'
+    `),
+
+    pool.query(`
+      SELECT COUNT(*) FROM listing_reports
+      WHERE status = 'open'
+    `),
+
+    pool.query(`
+      SELECT l.id, l.title, l.price, l.created_at
+      FROM listings l
+      ORDER BY l.created_at DESC
+      LIMIT 5
+    `),
+
+    pool.query(`
+      SELECT *
+      FROM admin_logs
+      ORDER BY created_at DESC
+      LIMIT 10
+    `),
+  ]);
 
   return {
+    stats: {
+      totalUsers: Number(totalUsers.rows[0].count),
+      totalListings: Number(totalListings.rows[0].count),
+      pendingListings: Number(pendingListings.rows[0].count),
+      approvedListings: Number(approvedListings.rows[0].count),
+      suspendedUsers: Number(suspendedUsers.rows[0].count),
+      verifiedUsers: Number(verifiedUsers.rows[0].count),
+      admins: Number(adminUsers.rows[0].count),
+    },
 
-    totalUsers:
-      Number(totalUsers.rows[0].count),
+    alerts: {
+      fraudReports: Number(fraudReports.rows[0].count),
+      flaggedListings: Number(flaggedListings.rows[0].count),
+      openReports: Number(openReports.rows[0].count),
+    },
 
-    totalListings:
-      Number(totalListings.rows[0].count),
+    recentListings: recentListings.rows,
 
-    pendingListings:
-      Number(pendingListings.rows[0].count),
-
-    approvedListings:
-      Number(approvedListings.rows[0].count),
-
-    suspendedUsers:
-      Number(suspendedUsers.rows[0].count),
-
-    verifiedUsers:
-      Number(verifiedUsers.rows[0].count),
-
-    admins:
-      Number(admins.rows[0].count),
+    activity: recentLogs.rows,
   };
 }
+
 
   // =========================================
   // USERS
@@ -217,6 +256,31 @@ static async flagListing(listingId: string, adminId: string) {
   };
 }
 
+static async revertListing(
+  listingId: string,
+  adminId: string
+) {
+
+  await pool.query(`
+    UPDATE listings
+    SET
+      moderation_status = 'pending',
+      updated_at = NOW()
+    WHERE id = $1
+  `, [listingId]);
+
+  await this.logAction(
+    adminId,
+    "revert_listing",
+    "listing",
+    listingId
+  );
+
+  return {
+    message: "Listing reverted to pending"
+  };
+}
+
   // =========================================
   // APPROVE LISTING
   // =========================================
@@ -266,6 +330,8 @@ static async flagListing(listingId: string, adminId: string) {
 
   return { message: "Listing rejected" };
 }
+
+
 
   // =========================================
   // SUSPEND USER

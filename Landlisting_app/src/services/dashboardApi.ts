@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import baseURL from "./api";
 
 async function getAuthHeaders() {
@@ -14,14 +13,16 @@ async function getAuthHeaders() {
 export const getDashboardStats = async () => {
   const headers = await getAuthHeaders();
 
-  const res = await fetch(`${baseURL}/dashboard`, {
+  const res = await fetch(`${baseURL}/admin/dashboard`, {
+    method: "GET",
     headers,
   });
 
+  const data = await res.json();
+
   if (!res.ok) {
-    const errorData = await res.json();
-    throw new Error(errorData.message || "Failed to fetch dashboard");
+    throw new Error(data?.message || "Failed to fetch dashboard");
   }
 
-  return await res.json();
+  return data;
 };
