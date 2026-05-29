@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import FilterBar, { HomeFilterState } from '../../components/FilterBar';
 import ListingCard, { ListingPreview } from '../../components/ListingCard';
+import { useUser } from '../../contexts/UserContext';
 
 const USD_TO_PHP = 58;
 const toPhp = (usd: number) => Math.round(usd * USD_TO_PHP);
@@ -66,6 +67,7 @@ const mockListings: ListingPreview[] = [
 ];
 
 const HomeScreen: React.FC = () => {
+  const { toggleRole } = useUser();
   const [listings] = useState<ListingPreview[]>(mockListings);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<HomeFilterState>({
@@ -119,7 +121,12 @@ const HomeScreen: React.FC = () => {
         ListHeaderComponent={
           <View style={styles.heroSection}>
             <View style={styles.heroCopy}>
-              <Text style={styles.eyebrow}>Buyer dashboard</Text>
+              <View style={styles.headerRow}>
+                <Text style={styles.eyebrow}>Buyer dashboard</Text>
+                <TouchableOpacity style={styles.switchButton} onPress={toggleRole}>
+                  <Text style={styles.switchButtonText}>Switch to Seller</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.title}>Discover land and homes that fit your next move.</Text>
               <Text style={styles.description}>
                 Browse curated listings, refine results with fast filters, and tap any card to view the details preview.
@@ -169,6 +176,23 @@ const styles = StyleSheet.create({
   },
   heroCopy: {
     paddingTop: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  switchButton: {
+    backgroundColor: '#0F766E',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  switchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   eyebrow: {
     fontSize: 12,
