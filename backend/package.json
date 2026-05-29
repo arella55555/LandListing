@@ -38,6 +38,7 @@
     "call-bind-apply-helpers": "^1.0.2",
     "call-bound": "^1.0.4",
     "chokidar": "^3.6.0",
+    "cloudinary": "^1.32.0",
     "content-disposition": "^1.1.0",
     "content-type": "^1.0.5",
     "cookie": "^0.7.2",
@@ -53,6 +54,7 @@
     "escape-html": "^1.0.3",
     "etag": "^1.8.1",
     "expo": "^55.0.24",
+    "expo-image-picker": "~55.0.20",
     "fill-range": "^7.1.1",
     "finalhandler": "^2.1.1",
     "forwarded": "^0.2.0",
@@ -99,7 +101,6 @@
     "qs": "^6.15.1",
     "range-parser": "^1.2.1",
     "raw-body": "^3.0.2",
-    "cloudinary": "^1.32.0"
     "react-native-gesture-handler": "~2.30.0",
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "~5.6.2",

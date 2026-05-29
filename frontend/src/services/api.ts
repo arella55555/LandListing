@@ -6,14 +6,14 @@ const API_BASE_URL = "http://192.168.123.44:5000/api";
 
 const API = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000,
 });
 
 
 // Attach JWT token automatically
 API.interceptors.request.use(async (config) => {
   try {
-    //const token = await AsyncStorage.getItem("token");
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImUwYzRhYmVhLWJiYjYtNGEyOS04YjM2LWE5YjVhMzU4NDE5NCIsInJvbGUiOiJzZWxsZXIiLCJpc192ZXJpZmllZCI6dHJ1ZSwiaWF0IjoxNzc5ODcwOTg5LCJleHAiOjE3Nzk5NTczODl9.KEE1H7d1rvfp_t8kCt3PWS2sgloO9LYj6L7vsTnwkLw";
+    const token = await AsyncStorage.getItem("token");
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -60,6 +60,15 @@ export const listingAPI = {
 // =========================
 export const categoryAPI = {
   getAll: () => API.get("/categories"),
+};
+
+// =========================
+// Auth API
+// =========================
+export const authAPI = {
+  login: (data: { email: string; password: string }) => API.post('/login', data),
+  register: (data: { email: string; password: string; full_name?: string; phone?: string; role?: string }) =>
+    API.post('/register', data),
 };
 
 // =========================

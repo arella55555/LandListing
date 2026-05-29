@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import FilterBar, { HomeFilterState } from '../../components/FilterBar';
 import ListingCard, { ListingPreview } from '../../components/ListingCard';
@@ -120,6 +121,27 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.topBarLabel}>Home</Text>
+          <Text style={styles.topBarTitle}>Listings</Text>
+        </View>
+
+        <Pressable
+          style={styles.logoutButton}
+          onPress={async () => {
+            try {
+              await AsyncStorage.removeItem('token');
+              router.replace('/login');
+            } catch (err) {
+              Alert.alert('Error', 'Could not log out.');
+            }
+          }}
+        >
+          <Text style={styles.logoutText}>Log out</Text>
+        </Pressable>
+      </View>
+
       <FlatList
         key={`home-grid-${columns}`}
         data={filteredListings}
@@ -170,6 +192,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  topBarLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F766E',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 2,
+  },
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 20,
@@ -178,6 +224,17 @@ const styles = StyleSheet.create({
   heroSection: {
     marginBottom: 18,
     gap: 16,
+  },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  logoutText: {
+    color: '#B91C1C',
+    fontWeight: '700',
   },
   heroCopy: {
     paddingTop: 8,

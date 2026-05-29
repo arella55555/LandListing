@@ -8,8 +8,12 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { authAPI } from '@/src/services/api';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [selectedRole, setSelectedRole] = useState<"seller" | "buyer" | "admin" | "">("buyer");
   const [email, setEmail] = useState("");
@@ -40,15 +44,21 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // API call to login
-      console.log("Login with:", { email, password });
-      // Replace with actual API endpoint
-      // const response = await api.post('/auth/login', { email, password, role: selectedRole });
+      const response = await authAPI.login({ email, password });
+      const token = response.data?.token;
+
+      if (!token) {
+        throw new Error('Missing token from login response');
+      }
+
+      await AsyncStorage.setItem('token', token);
       Alert.alert("Success", `Login successful as ${selectedRole}!`);
+      router.replace('/home');
       setEmail("");
       setPassword("");
     } catch (error) {
-      Alert.alert("Error", "Login failed. Please try again.");
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      Alert.alert("Error", message);
     } finally {
       setLoading(false);
     }
@@ -82,10 +92,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // API call to signup
-      console.log("Signup with:", { email, password });
-      // Replace with actual API endpoint
-      // const response = await api.post('/auth/signup', { email, password, role: selectedRole });
+      await authAPI.register({ email, password, role: selectedRole });
       Alert.alert("Success", `Signup successful as ${selectedRole}! Please login.`);
       setIsLogin(true);
       setEmail("");
@@ -95,6 +102,16 @@ export default function LoginScreen() {
       Alert.alert("Error", "Signup failed. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearSession = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      setIsLogin(true);
+      Alert.alert('Session cleared', 'Saved login state was removed.');
+    } catch (error) {
+      Alert.alert('Error', 'Could not clear saved session.');
     }
   };
 
@@ -201,6 +218,10 @@ export default function LoginScreen() {
             <Text style={styles.forgotPassword}>Forgot Password?</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity style={styles.clearButton} onPress={handleClearSession} disabled={loading}>
+          <Text style={styles.clearButtonText}>Clear saved session</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Toggle Login/Signup */}
@@ -314,6 +335,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     textAlign: "center",
+  },
+  clearButton: {
+    marginTop: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  clearButtonText: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: "row",
